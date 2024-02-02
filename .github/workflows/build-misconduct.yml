@@ -1,10 +1,10 @@
-name: Build Avilability
+name: Build Misconduct
 
 on:
   push:
     paths:
-      - 'availability/**'
-      - 'availability/!README.md'
+      - 'misconduct/**'
+      - 'misconduct/!README.md'
     branches:
       - '**'
       - '!releases/**'
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: availability
+        working-directory: misconduct
 
     strategy:
       matrix:
