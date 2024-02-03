@@ -4,7 +4,7 @@ import logging
 import csv
 from dotenv import load_dotenv
 from getopt import (getopt, GetoptError)
-from datetime import datetime
+from datetime import (datetime, timedelta)
 
 from assignr.assignr import Assignr
 from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
@@ -44,17 +44,28 @@ def get_arguments(args):
         elif opt in ("-e", "--end-date"):
             arguments['end_date'] = arg
 
-    if arguments['start_date'] is None or arguments['end_date'] is None:
-        logger.error(USAGE)
-        return 99, arguments
-
     try:
-         arguments['start_date'] = datetime.strptime(arguments['start_date'], "%m/%d/%Y").date()
+        if arguments['start_date']:
+            arguments['start_date'] = \
+                datetime.strptime(arguments['start_date'], "%m/%d/%Y").date()
+        else:
+            logger.info("No start date provided, setting to today")
+            arguments['start_date'] = datetime.now().date()
+
+        logger.info(f"Start Date set to {arguments['start_date']}")           
     except ValueError:
         logger.error(f"Start Date value, {arguments['start_date']} is invalid")
         rc = 88
+
     try:
-         arguments['end_date'] = datetime.strptime(arguments['end_date'], "%m/%d/%Y").date()
+        if arguments['end_date']:
+            arguments['end_date'] = \
+                datetime.strptime(arguments['end_date'], "%m/%d/%Y").date()
+        else:
+            logger.info(f"No end date provided, setting to 7 days prior to {arguments['start_date']}")
+            arguments['end_date'] = arguments['start_date'] - \
+                timedelta(days=7)
+        logger.info(f"End Date set to {arguments['end_date']}")
     except ValueError:
         logger.error(f"End Date value, {arguments['end_date']} is invalid")
         rc = 88

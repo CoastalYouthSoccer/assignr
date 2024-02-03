@@ -1,7 +1,7 @@
 from os import environ
 from unittest import TestCase
 from unittest.mock import patch
-from helpers.helpers import (check_environment_vars, check_spreadsheet_vars)
+from helpers.helpers import (get_environment_vars, get_spreadsheet_vars)
 
 
 class TestHelpers(TestCase):
@@ -21,7 +21,7 @@ class TestHelpers(TestCase):
             'AUTH_URL': 'auth_url',
             'BASE_URL': 'base_url'
         }
-        error, result = check_environment_vars()
+        error, result = get_environment_vars()
         self.assertEqual(error, [])
         self.assertEqual(result, expected_results)
 
@@ -40,7 +40,7 @@ class TestHelpers(TestCase):
             'AUTH_URL': 'auth_url',
             'BASE_URL': 'base_url'
         }
-        error, result = check_environment_vars()
+        error, result = get_environment_vars()
         self.assertEqual(error,
             ['CLIENT_SECRET environment variable is missing'])
         self.assertEqual(result, expected_results)
@@ -61,7 +61,7 @@ class TestHelpers(TestCase):
             'AUTH_URL': None,
             'BASE_URL': None
         }
-        error, result = check_environment_vars()
+        error, result = get_environment_vars_environment_vars()
         self.assertEqual(result, expected_results)
         self.assertEqual(error, expected_error)
 
@@ -77,7 +77,7 @@ class TestHelpers(TestCase):
             "SPREADSHEET_RANGE": "spreadsheet_range",
             "GOOGLE_APPLICATION_CREDENTIALS": "google_credentials"
         }
-        error, result = check_spreadsheet_vars()
+        error, result = get_spreadsheet_vars()
         self.assertEqual(error, [])
         self.assertEqual(result, expected_results)
 
@@ -92,7 +92,7 @@ class TestHelpers(TestCase):
             "SPREADSHEET_RANGE": "spreadsheet_range",
             "GOOGLE_APPLICATION_CREDENTIALS": "google_credentials"
         }
-        error, result = check_spreadsheet_vars()
+        error, result = get_spreadsheet_vars()
         self.assertEqual(error, [
             'SPREADSHEET_ID environment variable is missing'])
         self.assertEqual(result, expected_results)
@@ -109,6 +109,6 @@ class TestHelpers(TestCase):
             "SPREADSHEET_RANGE": None,
             "GOOGLE_APPLICATION_CREDENTIALS": None
         }
-        error, result = check_spreadsheet_vars()
+        error, result = get_spreadsheet_vars()
         self.assertEqual(result, expected_results)
         self.assertEqual(error, expected_error)
