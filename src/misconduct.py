@@ -6,12 +6,16 @@ from dotenv import load_dotenv
 from getopt import (getopt, GetoptError)
 from datetime import datetime
 
-from helpers.helpers import check_environment_vars
 from assignr.assignr import Assignr
+from helpers.helpers import check_environment_vars
 
 load_dotenv()
 
+log_level = environ.get('LOG_LEVEL', 10)
+logging.basicConfig(stream=stdout,
+                    level=int(log_level))
 logger = logging.getLogger(__name__)
+
 
 def get_arguments(args):
     arguments = {
@@ -56,10 +60,6 @@ def get_arguments(args):
     return rc, arguments
 
 def main():
-    log_level = environ.get('LOG_LEVEL', 'INFO')
-    logging.basicConfig(stream=stdout,
-                        level=int(log_level))
-
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
@@ -76,6 +76,7 @@ def main():
     
     misconducts = assignr.get_misconducts(args['start_date'],
                                            args['end_date'])
+    print('hello')
 
 
 if __name__ == "__main__":

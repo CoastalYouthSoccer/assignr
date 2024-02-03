@@ -1,4 +1,3 @@
-from os import environ
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
 from assignr.assignr import Assignr

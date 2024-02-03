@@ -3,8 +3,8 @@ name: Build Misconduct
 on:
   push:
     paths:
-      - 'misconduct/**'
-      - 'misconduct/!README.md'
+      - 'src/misconduct/**'
+      - '/src/misconduct/!README.md'
     branches:
       - '**'
       - '!releases/**'
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: misconduct
+        working-directory: src
 
     strategy:
       matrix:
