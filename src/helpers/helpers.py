@@ -38,4 +38,5 @@ def check_environment_vars():
     except KeyError:
         errors.append('BASE_URL environment variable is missing')
 
-    return errors
+    return errors, env_vars
+

@@ -55,3 +55,29 @@ class TestGetArguments(TestCase):
         self.assertEqual(cm.output, [ERROR_USAGE])
         self.assertEqual(rc, 99)
         self.assertEqual(args, expected_args)
+
+    def test_invalid_start_date(self):
+        expected_args = {
+            'start_date': '01/32/2020',
+            'end_date': date(2020, 1, 31)
+        }
+        with self.assertLogs(level='INFO') as cm:
+            rc, args = get_arguments(['-s', '01/32/2020', '-e', '01/31/2020'])
+        self.assertEqual(cm.output, [
+            'ERROR:misconduct:Start Date value, 01/32/2020 is invalid'
+        ])
+        self.assertEqual(rc, 88)
+        self.assertEqual(args, expected_args)
+
+    def test_invalid_end_date(self):
+        expected_args = {
+            'start_date': date(2020, 1, 31),
+            'end_date': '01/32/2020'
+        }
+        with self.assertLogs(level='INFO') as cm:
+            rc, args = get_arguments(['-s', '01/31/2020', '-e', '01/32/2020'])
+        self.assertEqual(cm.output, [
+            'ERROR:misconduct:End Date value, 01/32/2020 is invalid'
+        ])
+        self.assertEqual(rc, 88)
+        self.assertEqual(args, expected_args)

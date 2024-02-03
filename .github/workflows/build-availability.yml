@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'src/availability/**'
-      - 'availability/!README.md'
+      - 'src/helpers/**'
+      - '!src/availability/README.md'
     branches:
       - '**'
       - '!releases/**'

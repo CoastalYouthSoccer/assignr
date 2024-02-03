@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'src/misconduct/**'
-      - '/src/misconduct/!README.md'
+      - '!src/misconduct/README.md'
+      - 'src/helpers/**'
     branches:
       - '**'
       - '!releases/**'

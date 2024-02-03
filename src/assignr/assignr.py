@@ -3,6 +3,20 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def get_game_information(payload):
+    return {
+        'id': payload["id"],
+        'date': payload["localized_date"],
+        'time': payload["localized_date"],
+        'start_time': payload["start_time"],
+        'home_team': payload["home_team"],
+        'away_team': payload["away_team"],
+        'age_group': payload["age_group"],
+        'venue': payload["venue"],
+        'sub_venue': payload["subvenue"],
+        'game_type': payload["game_type"]
+    }
+
 
 class Assignr:
     def __init__(self, client_id, client_secret, client_scope,
@@ -57,6 +71,25 @@ class Assignr:
             response = requests.get(f"{self.base_url}{end_point}", headers=headers, params=params)
         return response.status_code, response.json()
 
+    def get_referees(self, payload):
+        referees = []
+        for official in payload:
+            referee = {
+                'no_show': official['no_show'],
+                'position': official['position_name'],
+                'first_name': None,
+                'last_name': None
+            }
+# Checks to see if official was assigned. Usually happens when a full crew
+# isn't available. Aka: Only a center is available.
+            if 'official' in official['_links']:
+                ref_info = self.get_referee_information(
+                            official['_links']['official']['href'])
+                referee['first_name'] = ref_info['first_name']
+                referee['last_name'] = ref_info['last_name']
+                referees.append(referee)
+        return referees
+
     def get_referee_information(self, endpoint):
         if not self.token:
             self.authenticate()
@@ -102,18 +135,9 @@ class Assignr:
         try:
             for item in response['_embedded']['game_reports']:
                 if item['misconduct']:
-                    referees = []
-                    for official in item['_embedded']['officials']:
-                        ref_info = self.get_referee_information(
-                            official['_links']['official']['href'])
-                        referees.append({
-                            'no_show': official['no_show'],
-                            'position': official['position'],
-                            'first_name': ref_info['first_name'],
-                            'last_name': ref_info['last_name']
-                        })
+                    referees = self.get_referees(item['_embedded']['officials'])
+                    game_info = get_game_information(item["_embedded"]["game"])
                     misconducts.append({
-                        'date': item['date'],
                         'home_team_score': item['home_team_score'],
                         'away_team_score': item['away_team_score'],
                         'text': item['text'],
@@ -122,16 +146,7 @@ class Assignr:
                             'first_name': item["_embedded"]["author"]["first_name"],
                             'last_name': item["_embedded"]["author"]["last_name"]
                         },
-                        'game': {
-                            'id': item["_embedded"]["game"]["id"],
-                            'start_time': item["_embedded"]["game"]["start_time"],
-                            'home_team': item["_embedded"]["game"]["home_team"],
-                            'away_team': item["_embedded"]["game"]["away_team"],
-                            'age_group': item["_embedded"]["game"]["age_group"],
-                            'venue': item["_embedded"]["game"]["venue"],
-                            'sub_venue': item["_embedded"]["game"]["subvenue"],
-                            'game_type': item["_embedded"]["game"]["game_type"]
-                        }
+                        'game': game_info
                     })
 
         except KeyError as ke:
