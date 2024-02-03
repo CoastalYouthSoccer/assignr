@@ -1,4 +1,3 @@
-from os import environ
 import requests
 import logging
 
@@ -16,16 +15,6 @@ class Assignr:
         self.site_id = None
         self.token = None
 
-    def get_site_id(self) -> None:
-        rc, response = self.get_requests('/current_account')
-        try:
-            if rc == 200:
-                self.site_id = response['_embedded']['sites'][0]['id']
-            else:
-                logging.error(f"Response code {rc} returned for get_site_id")     
-        except (KeyError, TypeError):
-            logging.error('Site id not found')
-                                                                                           
     def authenticate(self) -> None:
         form_data = {
             'client_secret': self.client_secret,
@@ -34,7 +23,7 @@ class Assignr:
             'grant_type': 'client_credentials'
         }
 
-        authenticate = requests.post(environ['AUTH_URL'], data=form_data)
+        authenticate = requests.post(self.auth_url, data=form_data)
 
         try:
             self.token = authenticate.json()['access_token']
@@ -42,28 +31,42 @@ class Assignr:
             logging.error('Token not found')
             self.token = None
 
+    def get_site_id(self) -> None:
+        rc, response = self.get_requests('/sites')
+        try:
+            if rc == 200:
+                self.site_id = response['_embedded']['sites'][0]['id']
+            else:
+                logging.error(f"Response code {rc} returned for get_site_id")     
+        except (KeyError, TypeError):
+            logging.error('Site id not found')
 
     def get_requests(self, end_point, params=None):
+        if not self.token:
+            self.authenticate()
+
         headers = {
             'accept': 'application/json',
             'authorization': f'Bearer {self.token}'
         }
 
         # Logic manages pagination url
-        if environ['BASE_URL'] in end_point:
+        if self.base_url in end_point:
             response = requests.get(end_point, headers=headers, params=params)
         else:
-            response = requests.get(f"{environ['BASE_URL']}{end_point}", headers=headers, params=params)
+            response = requests.get(f"{self.base_url}{end_point}", headers=headers, params=params)
         return response.status_code, response.json()
 
     def get_referee_information(self, endpoint):
+        if not self.token:
+            self.authenticate()
+
         referee = {}
 
-        status_code, response = self.get_requests(self.token,
-                                                  endpoint)
+        status_code, response = self.get_requests(endpoint)
 
         if status_code != 200:
-            logger.error(f'Failed to get referee information: {status_code}')
+            logging.error(f'Failed to get referee information: {status_code}')
             return referee
 
         referee = {
@@ -86,12 +89,14 @@ class Assignr:
             'search[end_date]': end_dt
         }
 
-        status_code, response = self.get_requests(self.token,
-                                                  f'sites/{self.site_id}/game_reports',
+        if self.site_id is None:
+            self.get_site_id()
+
+        status_code, response = self.get_requests(f'sites/{self.site_id}/game_reports',
                                                   params=params)
 
         if status_code != 200:
-            logger.error(f'Failed to get misconducts: {status_code}')
+            logging.error(f'Failed to get misconducts: {status_code}')
             return misconducts
 
         try:
@@ -130,6 +135,6 @@ class Assignr:
                     })
 
         except KeyError as ke:
-            logger.error(f"Key: {ke}, missing from Game Report response")
+            logging.error(f"Key: {ke}, missing from Game Report response")
 
         return misconducts
