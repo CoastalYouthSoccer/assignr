@@ -7,7 +7,9 @@ from getopt import (getopt, GetoptError)
 from datetime import datetime
 
 from assignr.assignr import Assignr
-from helpers.helpers import check_environment_vars
+from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
+                             get_coach_information, get_email_vars)
+from helpers.email import EMailClient
 
 load_dotenv()
 
@@ -59,24 +61,52 @@ def get_arguments(args):
 
     return rc, arguments
 
+def send_email(email_vars, misconducts):
+
+    email_client = EMailClient(
+        email_vars['EMAIL_SERVER'], email_vars['EMAIL_PORT'],
+        email_vars['EMAIL_USERNAME'], email_vars['EMAIL_PASSWORD'])
+
+    return email_client.send_email(misconducts, "misconduct.html", True)
+
 def main():
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
 
-    errors, env_vars = check_environment_vars()
+    errors, env_vars = get_environment_vars()
     if errors:
         for error in errors:
             logger.error(error)
         exit(88)
 
+    errors, spreadsheet_vars = get_spreadsheet_vars()
+    if errors:
+        for error in errors:
+            logger.error(error)
+        exit(77)
+
+    errors, email_vars = get_email_vars()
+    if errors:
+        for error in errors:
+            logger.error(error)
+        exit(66)
+
+
     assignr = Assignr(env_vars['CLIENT_ID'], env_vars['CLIENT_SECRET'],
                       env_vars['CLIENT_SCOPE'], env_vars['BASE_URL'],
                       env_vars['AUTH_URL'])
-    
+
+    coaches = get_coach_information(spreadsheet_vars['spreadsheet_id'],
+                                    spreadsheet_vars['sheet_range'])
+
     misconducts = assignr.get_misconducts(args['start_date'],
                                            args['end_date'])
-    print('hello')
+    
+    response = send_email(email_vars, misconducts)
+    if response:
+        logger.error(response)
+        exit(55)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ def get_game_information(payload):
     return {
         'id': payload["id"],
         'date': payload["localized_date"],
-        'time': payload["localized_date"],
+        'time': payload["localized_time"],
         'start_time': payload["start_time"],
         'home_team': payload["home_team"],
         'away_team': payload["away_team"],
