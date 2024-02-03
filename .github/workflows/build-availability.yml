@@ -1,9 +1,9 @@
-name: Build Avilability
+name: Build Availability
 
 on:
   push:
     paths:
-      - 'availability/**'
+      - 'src/availability/**'
       - 'availability/!README.md'
     branches:
       - '**'
