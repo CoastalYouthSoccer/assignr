@@ -6,9 +6,9 @@ Each tool is defined and described in their respective directory.
 
 ## Available Tools
 
-[Delete Games in Bulk](delete_games/README.md)
-
 [Referee Availability](availability/README.md)
+
+[Game Misconducts](misconduct/README.md)
 
 ## Setup
 

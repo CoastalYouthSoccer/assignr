@@ -1,11 +1,11 @@
-name: Build Availability
+name: Build Misconduct
 
 on:
   push:
     paths:
-      - 'src/availability/**'
+      - 'src/misconduct/**'
+      - '!src/misconduct/README.md'
       - 'src/helpers/**'
-      - '!src/availability/README.md'
     branches:
       - '**'
       - '!releases/**'

@@ -1,0 +1,22 @@
+{%- if misconducts -%}
+Misconduct Report ({{ start_date }} - {{ end_date }})
+
+{%- for misconduct in misconducts %}
+Reported By: {{ misconduct['author'] }}
+
+Game Information
+  Date: {{ misconduct['game_dt'] }}
+  Home Team: {{ misconduct['home_team']}} Score: {{ misconduct['home_team_score'] }}
+  Away Team: {{ misconduct['away_team']}} Score: {{ misconduct['away_team_score'] }}
+
+Officials
+{%- for official in misconduct['officials'] %}
+{{ official['position'] }}: {{ official['first_name'] }} {{ official ['last_name'] }}
+{%- endfor %}
+
+Narrative
+{{ misconduct['text'] }}
+{%- endfor -%}
+{%- else -%}
+No Misconducts issued
+{%- endif -%}
