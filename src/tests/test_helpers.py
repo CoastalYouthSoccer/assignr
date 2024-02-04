@@ -1,7 +1,8 @@
 from os import environ
 from unittest import TestCase
 from unittest.mock import patch
-from helpers.helpers import (get_environment_vars, get_spreadsheet_vars)
+from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
+                             get_email_vars)
 
 
 class TestHelpers(TestCase):
@@ -22,7 +23,7 @@ class TestHelpers(TestCase):
             'BASE_URL': 'base_url'
         }
         error, result = get_environment_vars()
-        self.assertEqual(error, [])
+        self.assertEqual(error, 0)
         self.assertEqual(result, expected_results)
 
     @patch.dict(environ,
@@ -40,19 +41,22 @@ class TestHelpers(TestCase):
             'AUTH_URL': 'auth_url',
             'BASE_URL': 'base_url'
         }
-        error, result = get_environment_vars()
-        self.assertEqual(error,
-            ['CLIENT_SECRET environment variable is missing'])
+        with self.assertLogs(level='INFO') as cm:
+            error, result = get_environment_vars()
+        self.assertEqual(cm.output, [
+            'ERROR:helpers.helpers:CLIENT_SECRET environment variable is missing'
+        ])
+        self.assertEqual(error, 66)
         self.assertEqual(result, expected_results)
 
     @patch.dict(environ, {}, clear=True)
     def test_missing_all_environment(self):
-        expected_error = [
-            'CLIENT_SECRET environment variable is missing',
-            'CLIENT_ID environment variable is missing',
-            'CLIENT_SCOPE environment variable is missing',
-            'AUTH_URL environment variable is missing',
-            'BASE_URL environment variable is missing'
+        expected_errors = [
+            'ERROR:helpers.helpers:CLIENT_SECRET environment variable is missing',
+            'ERROR:helpers.helpers:CLIENT_ID environment variable is missing',
+            'ERROR:helpers.helpers:CLIENT_SCOPE environment variable is missing',
+            'ERROR:helpers.helpers:AUTH_URL environment variable is missing',
+            'ERROR:helpers.helpers:BASE_URL environment variable is missing'
         ]
         expected_results = {
             'CLIENT_SECRET': None,
@@ -61,9 +65,11 @@ class TestHelpers(TestCase):
             'AUTH_URL': None,
             'BASE_URL': None
         }
-        error, result = get_environment_vars_environment_vars()
+        with self.assertLogs(level='INFO') as cm:
+            error, result = get_environment_vars()
+        self.assertEqual(cm.output, expected_errors)
         self.assertEqual(result, expected_results)
-        self.assertEqual(error, expected_error)
+        self.assertEqual(error, 66)
 
     @patch.dict(environ,
         {
@@ -78,7 +84,7 @@ class TestHelpers(TestCase):
             "GOOGLE_APPLICATION_CREDENTIALS": "google_credentials"
         }
         error, result = get_spreadsheet_vars()
-        self.assertEqual(error, [])
+        self.assertEqual(error, 0)
         self.assertEqual(result, expected_results)
 
     @patch.dict(environ,
@@ -92,23 +98,71 @@ class TestHelpers(TestCase):
             "SPREADSHEET_RANGE": "spreadsheet_range",
             "GOOGLE_APPLICATION_CREDENTIALS": "google_credentials"
         }
-        error, result = get_spreadsheet_vars()
-        self.assertEqual(error, [
-            'SPREADSHEET_ID environment variable is missing'])
+        with self.assertLogs(level='INFO') as cm:
+            error, result = get_spreadsheet_vars()
+        self.assertEqual(cm.output, [
+            'ERROR:helpers.helpers:SPREADSHEET_ID environment variable is missing'
+        ])
+        self.assertEqual(error, 55)
         self.assertEqual(result, expected_results)
 
     @patch.dict(environ, {}, clear=True)
     def test_missing_all_spreadsheet_vars(self):
-        expected_error = [
-            'GOOGLE_APPLICATION_CREDENTIALS environment variable is missing',
-            'SPREADSHEET_ID environment variable is missing',
-            'SPREADSHEET_RANGE environment variable is missing'
+        expected_errors = [
+            'ERROR:helpers.helpers:GOOGLE_APPLICATION_CREDENTIALS environment variable is missing',
+            'ERROR:helpers.helpers:SPREADSHEET_ID environment variable is missing',
+            'ERROR:helpers.helpers:SPREADSHEET_RANGE environment variable is missing'
         ]
         expected_results = {
             "SPREADSHEET_ID": None,
             "SPREADSHEET_RANGE": None,
             "GOOGLE_APPLICATION_CREDENTIALS": None
         }
-        error, result = get_spreadsheet_vars()
+        with self.assertLogs(level='INFO') as cm:
+            error, result = get_spreadsheet_vars()
+        self.assertEqual(cm.output, expected_errors)
         self.assertEqual(result, expected_results)
-        self.assertEqual(error, expected_error)
+        self.assertEqual(error, 55)
+
+    @patch.dict(environ,
+        {
+            "EMAIL_SERVER": "email_server",
+            "EMAIL_PORT": "587",
+            "EMAIL_USERNAME": "email_username",
+            "EMAIL_PASSWORD": "email_password",
+            "EMAIL_TO": "email_to"
+        }, clear=True)
+    def test_email_set(self):
+        expected_results = {
+            'EMAIL_SERVER': 'email_server',
+            'EMAIL_PORT': 587,
+            'EMAIL_USERNAME': 'email_username',
+            'EMAIL_PASSWORD': 'email_password',
+            'EMAIL_TO': 'email_to'
+        }
+        error, result = get_email_vars()
+        self.assertEqual(error, 0)
+        self.assertEqual(result, expected_results)
+
+    @patch.dict(environ,
+        {
+            "EMAIL_SERVER": "email_server",
+            "EMAIL_PORT": "abc",
+            "EMAIL_USERNAME": "email_username",
+            "EMAIL_PASSWORD": "email_password",
+            "EMAIL_TO": "email_to"
+        }, clear=True)
+    def test_email_invalid_port(self):
+        expected_results = {
+            'EMAIL_SERVER': 'email_server',
+            'EMAIL_PORT': 587,
+            'EMAIL_USERNAME': 'email_username',
+            'EMAIL_PASSWORD': 'email_password',
+            'EMAIL_TO': 'email_to'
+        }
+        with self.assertLogs(level='INFO') as cm:
+            error, result = get_email_vars()
+        self.assertEqual(cm.output, 
+            ['ERROR:helpers.helpers:EMAIL_PORT environment variable is not an integer'])
+        self.assertEqual(error, 55)
+        self.assertEqual(result, expected_results)

@@ -24,16 +24,29 @@ def load_sheet(sheet_id, sheet_range) -> list:
     
     return sheet_values
 
+def rows_to_dict(rows):
+    result = {}
+
+    for row in rows:
+        current_level = result
+        for key in row[:-2]:
+            current_level = current_level.setdefault(key, {})
+        current_level[row[-2]] = row[-1]
+
+    return result
+
 def get_coach_information(spreadsheet_id, sheet_range) -> dict:
-    coaches = {}
+    rows =  []
 
     temp_values = load_sheet(spreadsheet_id, sheet_range)
     for row in temp_values:
-        coaches[row['age_group']][row['gender']][row['team']] = row['coach']
-    return coaches
+        if row and 'grade' in row[0].lower():
+            rows.append(row)
+
+    return rows_to_dict(rows)
 
 def get_environment_vars():
-    errors = []
+    rc = 0
     env_vars = {
         'CLIENT_SECRET': None,
         'CLIENT_ID': None,
@@ -45,32 +58,37 @@ def get_environment_vars():
     try:
         env_vars['CLIENT_SECRET'] = environ['CLIENT_SECRET']
     except KeyError:
-        errors.append('CLIENT_SECRET environment variable is missing')
+        logger.error('CLIENT_SECRET environment variable is missing')
+        rc = 66
 
     try:
         env_vars['CLIENT_ID'] = environ['CLIENT_ID']
     except KeyError:
-        errors.append('CLIENT_ID environment variable is missing')
+        logger.error('CLIENT_ID environment variable is missing')
+        rc = 66
 
     try:
         env_vars['CLIENT_SCOPE'] = environ['CLIENT_SCOPE']
     except KeyError:
-        errors.append('CLIENT_SCOPE environment variable is missing')
+        logger.error('CLIENT_SCOPE environment variable is missing')
+        rc = 66
 
     try:
         env_vars['AUTH_URL'] = environ['AUTH_URL']
     except KeyError:
-        errors.append('AUTH_URL environment variable is missing')
+        logger.error('AUTH_URL environment variable is missing')
+        rc = 66
 
     try:
         env_vars['BASE_URL'] = environ['BASE_URL']
     except KeyError:
-        errors.append('BASE_URL environment variable is missing')
+        logger.error('BASE_URL environment variable is missing')
+        rc = 66
 
-    return errors, env_vars
+    return rc, env_vars
 
 def get_spreadsheet_vars():
-    errors = []
+    rc = 0
     env_vars = {
         'SPREADSHEET_ID': None,
         'SPREADSHEET_RANGE': None,
@@ -80,47 +98,62 @@ def get_spreadsheet_vars():
     try:
         env_vars['GOOGLE_APPLICATION_CREDENTIALS'] = environ['GOOGLE_APPLICATION_CREDENTIALS']
     except KeyError:
-        errors.append('GOOGLE_APPLICATION_CREDENTIALS environment variable is missing')
+        logger.error('GOOGLE_APPLICATION_CREDENTIALS environment variable is missing')
+        rc = 55
 
     try:
         env_vars['SPREADSHEET_ID'] = environ['SPREADSHEET_ID']
     except KeyError:
-        errors.append('SPREADSHEET_ID environment variable is missing')
+        logger.error('SPREADSHEET_ID environment variable is missing')
+        rc = 55
 
     try:
         env_vars['SPREADSHEET_RANGE'] = environ['SPREADSHEET_RANGE']
     except KeyError:
-        errors.append('SPREADSHEET_RANGE environment variable is missing')
+        logger.error('SPREADSHEET_RANGE environment variable is missing')
+        rc = 55
 
-    return errors, env_vars
+    return rc, env_vars
 
 def get_email_vars():
-    msgs = []
+    rc = 0
     env_vars = {
         'EMAIL_SERVER': 'smtp.gmail.com',
         'EMAIL_PORT': 587,
         'EMAIL_USERNAME': None,
-        'EMAIL_PASSWORD': None
+        'EMAIL_PASSWORD': None,
+        'EMAIL_TO': None
     }
 
     try:
         env_vars['EMAIL_SERVER'] = environ['EMAIL_SERVER']
     except KeyError:
-        msgs.append('EMAIL_SERVER environment variable is missing, defaulting to "smtp.gmail.com"')
+        logger.info('EMAIL_SERVER environment variable is missing, defaulting to "smtp.gmail.com"')
 
     try:
-        env_vars['EMAIL_PORT'] = environ['EMAIL_PORT']
+        env_vars['EMAIL_PORT'] = int(environ['EMAIL_PORT'])
     except KeyError:
-        msgs.append('EMAIL_PORT environment variable is missing, defaulting to 587')
+        logger.info('EMAIL_PORT environment variable is missing, defaulting to 587')
+    except ValueError:
+        logger.error('EMAIL_PORT environment variable is not an integer')
+        rc = 55
 
     try:
         env_vars['EMAIL_USERNAME'] = environ['EMAIL_USERNAME']
     except KeyError:
-        msgs.append('EMAIL_USERNAME environment variable is missing')
+        logger.error('EMAIL_USERNAME environment variable is missing')
+        rc = 55
 
     try:
         env_vars['EMAIL_PASSWORD'] = environ['EMAIL_PASSWORD']
     except KeyError:
-        msgs.append('EMAIL_PASSWORD environment variable is missing')
+        logger.error('EMAIL_PASSWORD environment variable is missing')
+        rc = 55
 
-    return msgs, env_vars
+    try:
+        env_vars['EMAIL_TO'] = environ['EMAIL_TO']
+    except KeyError:
+        logger.error('EMAIL_TO environment variable is missing')
+        rc = 55
+
+    return rc, env_vars

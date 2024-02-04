@@ -1,7 +1,7 @@
 from os import environ
 from sys import (argv, exit, stdout)
 import logging
-import csv
+import json
 from dotenv import load_dotenv
 from getopt import (getopt, GetoptError)
 from datetime import (datetime, timedelta)
@@ -44,80 +44,97 @@ def get_arguments(args):
         elif opt in ("-e", "--end-date"):
             arguments['end_date'] = arg
 
-    try:
-        if arguments['start_date']:
-            arguments['start_date'] = \
-                datetime.strptime(arguments['start_date'], "%m/%d/%Y").date()
-        else:
-            logger.info("No start date provided, setting to today")
-            arguments['start_date'] = datetime.now().date()
-
-        logger.info(f"Start Date set to {arguments['start_date']}")           
-    except ValueError:
-        logger.error(f"Start Date value, {arguments['start_date']} is invalid")
-        rc = 88
 
     try:
         if arguments['end_date']:
             arguments['end_date'] = \
                 datetime.strptime(arguments['end_date'], "%m/%d/%Y").date()
         else:
-            logger.info(f"No end date provided, setting to 7 days prior to {arguments['start_date']}")
-            arguments['end_date'] = arguments['start_date'] - \
-                timedelta(days=7)
+            arguments['end_date'] = datetime.now().date()
+            logger.info(f"No end date provided, setting to {arguments['end_date']}")
         logger.info(f"End Date set to {arguments['end_date']}")
     except ValueError:
         logger.error(f"End Date value, {arguments['end_date']} is invalid")
         rc = 88
 
+    try:
+        if arguments['start_date']:
+            arguments['start_date'] = \
+                datetime.strptime(arguments['start_date'], "%m/%d/%Y").date()
+        else:
+            arguments['start_date'] = arguments['end_date'] - \
+                timedelta(days=7)
+            logger.info(f"No start date provided, setting to {arguments['start_date']}")
+
+        logger.info(f"Start Date set to {arguments['start_date']}")           
+    except ValueError:
+        logger.error(f"Start Date value, {arguments['start_date']} is invalid")
+        rc = 88
+
+    if arguments['start_date'] > arguments['end_date']:
+        logger.error(f"Start Date {arguments['start_date']} is after End Date {arguments['end_date']}")
+        rc = 88
+
     return rc, arguments
 
 def send_email(email_vars, misconducts):
-
     email_client = EMailClient(
         email_vars['EMAIL_SERVER'], email_vars['EMAIL_PORT'],
         email_vars['EMAIL_USERNAME'], email_vars['EMAIL_PASSWORD'])
 
-    return email_client.send_email(misconducts, "misconduct.html", True)
+    return email_client.send_email(misconducts, "misconduct.html.jinja", True)
 
 def main():
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
 
-    errors, env_vars = get_environment_vars()
-    if errors:
-        for error in errors:
-            logger.error(error)
-        exit(88)
+    rc, env_vars = get_environment_vars()
+    if rc:
+        exit(rc)
 
-    errors, spreadsheet_vars = get_spreadsheet_vars()
-    if errors:
-        for error in errors:
-            logger.error(error)
-        exit(77)
+    rc, spreadsheet_vars = get_spreadsheet_vars()
+    if rc:
+        exit(rc)
 
-    errors, email_vars = get_email_vars()
-    if errors:
-        for error in errors:
-            logger.error(error)
-        exit(66)
+    rc, email_vars = get_email_vars()
+    if rc:
+        exit(rc)
 
+#    assignr = Assignr(env_vars['CLIENT_ID'], env_vars['CLIENT_SECRET'],
+#                      env_vars['CLIENT_SCOPE'], env_vars['BASE_URL'],
+#                      env_vars['AUTH_URL'])
+#
+#    coaches = get_coach_information(spreadsheet_vars['SPREADSHEET_ID'],
+#                                    spreadsheet_vars['SPREADSHEET_RANGE'])
+#
+#    misconducts = assignr.get_misconducts(args['start_date'],
+#                                           args['end_date'])
+#    
+#    for misconduct in misconducts:
+#        if misconduct['age_group'] in coaches and \
+#            misconduct['gender'] in coaches[misconduct['age_group']] and \
+#            misconduct['home_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
+#            misconduct['coach'] = coaches[misconduct['age_group']] \
+#        [misconduct['gender']][misconduct['home_team']]
 
-    assignr = Assignr(env_vars['CLIENT_ID'], env_vars['CLIENT_SECRET'],
-                      env_vars['CLIENT_SCOPE'], env_vars['BASE_URL'],
-                      env_vars['AUTH_URL'])
+    misconducts = []
+    with open('misconducts.json') as f_in:
+        misconducts = json.load(f_in)
 
-    coaches = get_coach_information(spreadsheet_vars['spreadsheet_id'],
-                                    spreadsheet_vars['sheet_range'])
-
-    misconducts = assignr.get_misconducts(args['start_date'],
-                                           args['end_date'])
-    
-    response = send_email(email_vars, misconducts)
+    email_content = {
+        'subject': f'Misconduct: {args["start_date"]} - {args["end_date"]}',
+        'content': {
+            'start_date': args['start_date'],
+            'end_date': args['end_date'],
+            'misconducts': misconducts
+        }
+    }
+    response = send_email(email_vars, email_content)
     if response:
         logger.error(response)
         exit(55)
+    print('hello')
 
 
 if __name__ == "__main__":

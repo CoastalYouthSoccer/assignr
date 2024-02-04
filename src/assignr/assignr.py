@@ -13,6 +13,7 @@ def get_game_information(payload):
         'away_team': payload["away_team"],
         'age_group': payload["age_group"],
         'venue': payload["venue"],
+        'gender': payload["gender"],
         'sub_venue': payload["subvenue"],
         'game_type': payload["game_type"]
     }
@@ -141,12 +142,18 @@ class Assignr:
                         'home_team_score': item['home_team_score'],
                         'away_team_score': item['away_team_score'],
                         'text': item['text'],
+                        'html': item['html'],
                         'officials': referees,
-                        'author': {
-                            'first_name': item["_embedded"]["author"]["first_name"],
-                            'last_name': item["_embedded"]["author"]["last_name"]
-                        },
-                        'game': game_info
+                        'author': f'{item["_embedded"]["author"]["first_name"]} {item["_embedded"]["author"]["last_name"]}',
+                        'game_dt': game_info['start_time'],
+                        'home_team': game_info['home_team'],
+                        'away_team': game_info['away_team'],
+                        'venue': game_info['venue'],
+                        'sub_venue': game_info['sub_venue'],
+                        'game_type': game_info['game_type'],
+                        'age_group': game_info['age_group'],
+                        'gender': game_info['gender'],
+                        'coach': 'Unknown'
                     })
 
         except KeyError as ke:

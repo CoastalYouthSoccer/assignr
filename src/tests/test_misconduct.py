@@ -36,7 +36,7 @@ class TestGetArguments(TestCase):
         self.assertEqual(args, expected_args)
 
     def test_missing_start_date(self):
-        start_date = datetime.now().date()
+        start_date = DATE_FORMAT_01012020 - timedelta(days=7)
 
         expected_args = {
             'start_date': start_date,
@@ -45,16 +45,15 @@ class TestGetArguments(TestCase):
         with self.assertLogs(level='INFO') as cm:
             rc, args = get_arguments(['-e', DATE_01012020])
         self.assertEqual(cm.output, [
-            'INFO:misconduct:No start date provided, setting to today',
-            f'INFO:misconduct:Start Date set to {start_date}',
-            'INFO:misconduct:End Date set to 2020-01-01'            
+            'INFO:misconduct:End Date set to 2020-01-01',           
+            f'INFO:misconduct:No start date provided, setting to {start_date}',
+            f'INFO:misconduct:Start Date set to {start_date}'
             ])
         self.assertEqual(rc, 0)
         self.assertEqual(args, expected_args)
 
     def test_missing_end_date(self):
-        end_date = datetime.strptime(DATE_01012020, "%m/%d/%Y").date() - \
-            timedelta(days=7)
+        end_date = datetime.now().date()
         expected_args = {
             'start_date': DATE_FORMAT_01012020,
             'end_date': end_date
@@ -62,9 +61,26 @@ class TestGetArguments(TestCase):
         with self.assertLogs(level='INFO') as cm:
             rc, args = get_arguments(['-s', DATE_01012020])
         self.assertEqual(cm.output, [
-            'INFO:misconduct:Start Date set to 2020-01-01',
-            'INFO:misconduct:No end date provided, setting to 7 days prior to 2020-01-01',
+            f'INFO:misconduct:No end date provided, setting to {end_date}',
             f'INFO:misconduct:End Date set to {end_date}',
+            'INFO:misconduct:Start Date set to 2020-01-01'
         ])
         self.assertEqual(rc, 0)
+        self.assertEqual(args, expected_args)
+
+    def test_start_date_greater_end_date(self):
+        end_date = datetime.strptime(DATE_01012020, "%m/%d/%Y").date()
+        start_date = datetime.strptime('01/10/2020', "%m/%d/%Y").date()
+        expected_args = {
+            'start_date': start_date,
+            'end_date': end_date
+        }
+        with self.assertLogs(level='INFO') as cm:
+            rc, args = get_arguments(['-s', '01/10/2020', '-e', DATE_01012020])
+        self.assertEqual(cm.output, [
+            f'INFO:misconduct:End Date set to {end_date}',
+            f'INFO:misconduct:Start Date set to {start_date}',
+            f'ERROR:misconduct:Start Date {start_date} is after End Date {end_date}'
+        ])
+        self.assertEqual(rc, 88)
         self.assertEqual(args, expected_args)

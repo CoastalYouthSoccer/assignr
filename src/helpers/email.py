@@ -34,7 +34,7 @@ class EMailClient():
         logger.debug('Completed create message ...')
         return message
 
-    def create_email(self, content, template_name, html):
+    def create_email(self, content, template_name, html=True):
         logger.debug('Starting create email ...')
 
         addr_component = self.sender_email.split('@')
@@ -50,7 +50,7 @@ class EMailClient():
                              )
         email["Subject"] = content['subject']
 
-        message = self.create_message(content, template_name)
+        message = self.create_message(content['content'], template_name)
 
         if html:
             email.set_content(message, subtype="html")
@@ -63,8 +63,8 @@ class EMailClient():
     def send_email(self, content, template_name, html=False):
         logger.debug('Starting send email ...')
     
-        if "email" not in content or "subject" not in content:
-            return {"message": "email and subject are required fields",
+        if "content" not in content or "subject" not in content:
+            return {"message": "content and subject are required fields",
                     "code": 406}
 
         email = self.create_email(content, template_name, html)
