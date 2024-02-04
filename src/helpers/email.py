@@ -21,6 +21,7 @@ class EMailClient():
 
     def create_message(self, content, template_name):
         logger.debug('Starting create message ...')
+        message = None
         environment = Environment(
             autoescape=True,
             loader=FileSystemLoader(self.template_dir))
@@ -29,7 +30,6 @@ class EMailClient():
             message = template.render(content)
         except TemplateNotFound as tf:
             logger.error(f"Missing File: {tf}")
-            message = None
 
         logger.debug('Completed create message ...')
         return message
@@ -60,17 +60,24 @@ class EMailClient():
         logger.debug('Completed create email ...')
         return email
 
-    def send_email(self, content, template_name, html=False):
+    def send_email(self, content, template_name, html=False) -> int:
+        rc = 0
         logger.debug('Starting send email ...')
     
-        if "content" not in content or "subject" not in content:
-            return {"message": "content and subject are required fields",
-                    "code": 406}
+        if "content" not in content:
+            logger.error("'content' is required")
+            rc = 33
+        if "subject" not in content:
+            logger.error("'subject' is required")
+            rc = 33
+        if rc != 0:
+            return rc
 
         email = self.create_email(content, template_name, html)
 
         if email is None:
-            return {"message": "Unable to send email", "code": 406}
+            logger.error("Unable to send email")
+            rc = 33
 
         try:
             if self.smtp_port == 465:
@@ -83,12 +90,10 @@ class EMailClient():
             server.sendmail(self.sender_email, self.sender_email,
                             email.as_string())
             logger.debug('Completed send email ...')
-            
-            return {"message": "Successfully sent ... Replies usually occur within 48 hours.",
-                    "code": 200}
+
         except smtplib.SMTPAuthenticationError as se:
             logger.error(se)
             logger.debug('Completed send email ...')
+            rc = 44
 
-            return {"message": "Problem Sending Email",
-                    "code": 406}
+        return rc
