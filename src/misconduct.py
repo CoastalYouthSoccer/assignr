@@ -13,7 +13,7 @@ from helpers.email import EMailClient
 
 load_dotenv()
 
-log_level = environ.get('LOG_LEVEL', 10)
+log_level = environ.get('LOG_LEVEL', 30)
 logging.basicConfig(stream=stdout,
                     level=int(log_level))
 logger = logging.getLogger(__name__)

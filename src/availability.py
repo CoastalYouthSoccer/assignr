@@ -5,11 +5,14 @@ import csv
 from dotenv import load_dotenv
 from getopt import (getopt, GetoptError)
 from datetime import datetime
-
-from helpers.helpers import (authenticate, get_requests)
+from assignr.assignr import Assignr
+from helpers.helpers import get_environment_vars
 
 load_dotenv()
 
+log_level = environ.get('LOG_LEVEL', 30)
+logging.basicConfig(stream=stdout,
+                    level=int(log_level))
 logger = logging.getLogger(__name__)
 
 def get_arguments(args):
@@ -54,43 +57,6 @@ def get_arguments(args):
 
     return rc, arguments
 
-def get_availability(token, user_id, start_dt, end_dt):
-    availability = []
-    params = {
-        'user_id': user_id,
-        'search[start_date]': start_dt,
-        'search[end_date]': end_dt
-    }
-
-    status_code, response = get_requests(token, f'users/{user_id}/availability', params=params)
-
-#    if status_code != 200:
-#        logger.error(f'Failed return code: {status_code} for user: {user_id}')
-#        return availability
-
-    if status_code == 404:
-        logger.warning(f'User: {user_id} has no availability')
-        return availability
-    
-    try:
-        availabilities = response['_embedded']['availability']
-        for avail in availabilities:
-            if avail['all_day']:
-                availability.append({
-                    'date': avail['date'],
-                    'avail': 'ALL DAY'                 
-                })
-            else:
-                availability.append({
-                    'date': avail['date'],
-                    'avail': f"{avail['start_time']} - {avail['end_time']}"                 
-                })
-
-    except KeyError as ke:
-        logger.error(f"Key: {ke}, missing from Availability response")
-
-    return availability
-
 def get_referees():
     referees = []
 
@@ -113,26 +79,21 @@ def get_referees():
     return referees
 
 def main():
-    try:
-        LOG_LEVEL = environ['LOG_LEVEL']
-    except KeyError:
-        logger.error('LOG_LEVEL environment variable not found')
-        exit(99)
-
-    logging.basicConfig(stream=stdout,
-                        level=int(LOG_LEVEL))
-
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
 
-    token = authenticate()
-    if token is None:
-        exit(88)
+    rc, env_vars = get_environment_vars()
+    if rc:
+        exit(rc)
+
+    assignr = Assignr(env_vars['CLIENT_ID'], env_vars['CLIENT_SECRET'],
+                      env_vars['CLIENT_SCOPE'], env_vars['BASE_URL'],
+                      env_vars['AUTH_URL'])
 
     referee_availability = []
     for referee in get_referees():
-        response = get_availability(token, referee['id'], args['start_date'],
+        response = assignr.get_availability(referee['id'], args['start_date'],
                                     args['end_date'])
         if response:
             for resp in response:
