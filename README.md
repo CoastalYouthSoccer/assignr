@@ -6,9 +6,9 @@ Each tool is defined and described in their respective directory.
 
 ## Available Tools
 
-[Referee Availability](availability/README.md)
+[Referee Availability](AVAILABILITY.md)
 
-[Game Misconducts](misconduct/README.md)
+[Game Misconducts](MISCONDUCT.md)
 
 ## Setup
 
@@ -25,13 +25,14 @@ The steps below are generic and apply to most tools since tools are written in P
 ### Python Setup
 * change directory to the desired tool
 * create a virtualenv
- 
+
+```bash
+ python3 -m venv <virtual env name> or virtualenv <virtual env name>
+ source ./<virtual env name>/bin/activate (Linux/Mac)
  ```
- 
- Most    * `python3 -m venv <virtual env name> or
-    * `virtualenv <virtual env name>
-* source ./<virtual env name>/bin/activate (Linux/Mac)
-* run `pip install -r requirements`
+
+* install the requireed packages.
+`pip install -r requirements`
 
 ### Environment Setup
 * copy `sample.env` to `.env`
