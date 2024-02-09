@@ -1,13 +1,15 @@
-name: Build Availability
+name: Build And Deploy Assignr Code
 
 on:
   push:
     paths:
-      - 'src/availability/**'
-      - 'src/helpers/**'
-      - 'src/tests/**'
-      - '!src/availability/README.md'
-      - '.github/workflows/build-availability'
+      - 'src/**'
+    branches:
+      - '**'
+      - '!releases/**'
+  pull_request:
+    paths:
+      - 'src/**'
     branches:
       - '**'
       - '!releases/**'
@@ -54,3 +56,24 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    defaults:
+      run:
+        working-directory: src
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: ${{ secrets.KNOWN_HOSTS }}
+
+    - name: Run Install Process
+      run: |
+        ssh $DEPLOY_HOST "sudo ${{ secrets.SCRIPT_DIR }}/update_misconduct.sh ${GITHUB_SHA}"
