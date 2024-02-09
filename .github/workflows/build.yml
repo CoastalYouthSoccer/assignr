@@ -46,12 +46,12 @@ jobs:
     - name: Test with pytest
       run: |
         coverage run -m pytest --junitxml=coverage.xml || true
-#        coverage xml
+        coverage xml
 
-#    - name: Generate reports and fix code coverage paths for Sonarcloud
-#      run: |
-#        coverage xml -o coverage.xml
-#        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
+    - name: Generate reports and fix code coverage paths for Sonarcloud
+      run: |
+        coverage xml -o coverage.xml
+        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
 
     - name: SonarCloud Scan
       uses: SonarSource/sonarcloud-github-action@master
