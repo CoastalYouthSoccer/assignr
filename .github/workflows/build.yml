@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/**'
       - '.github/workflows/build.yml'
+      - 'sonar-project.properties'
     branches:
       - '**'
       - '!releases/**'
