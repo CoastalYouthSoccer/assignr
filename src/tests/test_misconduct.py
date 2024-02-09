@@ -1,6 +1,5 @@
 from datetime import (datetime, timedelta)
 from unittest import TestCase
-from unittest.mock import (patch, MagicMock)
 from misconduct import get_arguments
 
 ERROR_USAGE='ERROR:misconduct:USAGE: misconduct.py -s <start-date>' \

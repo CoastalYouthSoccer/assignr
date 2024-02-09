@@ -160,3 +160,40 @@ class Assignr:
             logging.error(f"Key: {ke}, missing from Game Report response")
 
         return misconducts
+
+    def get_availability(self, user_id, start_dt, end_dt):
+        availability = []
+        params = {
+           'user_id': user_id,
+           'search[start_date]': start_dt,
+           'search[end_date]': end_dt
+       }
+
+        status_code, response = self.get_requests(
+            f'users/{user_id}/availability', params=params)
+
+        if status_code == 404:
+            logger.warning(f'User: {user_id} has no availability')
+            return availability
+
+        if status_code != 200:
+            logger.error(f'Failed return code: {status_code} for user: {user_id}')
+            return availability
+
+        try:
+            for avail in response['_embedded']['availability']:
+                if avail['all_day'] == 'true':
+                    availability.append({
+                        'date': avail['date'],
+                        'avail': 'ALL DAY'                 
+                    })
+                else:
+                    availability.append({
+                        'date': avail['date'],
+                        'avail': f"{avail['start_time']} - {avail['end_time']}"                 
+                    })
+
+        except KeyError as ke:
+            logger.error(f"Key: {ke}, missing from Availability response")
+
+        return availability
