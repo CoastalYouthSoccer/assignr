@@ -76,4 +76,4 @@ jobs:
 
     - name: Run Install Process
       run: |
-        ssh $DEPLOY_HOST "sudo ${{ secrets.SCRIPT_DIR }}/update_misconduct.sh ${GITHUB_SHA}"
+        ssh ${{vars.DEPLOY_HOST}} "sudo ${{ secrets.SCRIPT_DIR }}/update_misconduct.sh ${GITHUB_SHA}"
