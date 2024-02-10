@@ -1,7 +1,6 @@
 from os import environ
 from sys import (argv, exit, stdout)
 import logging
-import json
 from dotenv import load_dotenv
 from getopt import (getopt, GetoptError)
 from datetime import (datetime, timedelta)
@@ -11,9 +10,10 @@ from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              get_coach_information, get_email_vars)
 from helpers.email import EMailClient
 
-load_dotenv()
+env_file = environ.get('ENV_FILE', '.env')
+load_dotenv(env_file)
 
-log_level = environ.get('LOG_LEVEL', 30)
+log_level = environ.get('LOG_LEVEL', logging.INFO)
 logging.basicConfig(stream=stdout,
                     level=int(log_level))
 logger = logging.getLogger(__name__)

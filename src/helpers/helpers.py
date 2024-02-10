@@ -13,7 +13,7 @@ def load_sheet(sheet_id, sheet_range) -> list:
     sheet_values = []
 
     try:
-        service = build('sheets', 'v4', credentials=credentials)
+        service = build('sheets', 'v4', credentials=credentials, cache_discovery=False)
         sheet = service.spreadsheets()
         result = sheet.values().get(
             spreadsheetId=sheet_id, range=sheet_range).execute()
