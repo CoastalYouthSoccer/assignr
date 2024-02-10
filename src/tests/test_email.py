@@ -15,6 +15,7 @@ CONST_FROM_EMAIL = "Hanover Soccer Referee <test_sender@example.com>"
 CONST_START_MESSAGE = "DEBUG:helpers.email:Starting create message ..."
 CONST_END_MESSAGE = "DEBUG:helpers.email:Completed create message ..."
 CONST_TEST_USER = "test user"
+CONST_DATE_FORMAT = "%m/%d/%Y"
 
 CONST_DATA_NO_MESSAGE = {
     'email': CONST_EMAIL,
@@ -45,7 +46,8 @@ CONST_DATA_MESSAGE = {
         "game_type": "Coastal",
         "age_group": "Grade 5/6",
         "gender": "Boys",
-        "coach": "Bad Coach" }]
+        "home_coach": "Mr. Burns",
+        "away_coach": "Mr. Smithers" }]
     }
 }
 
@@ -149,22 +151,22 @@ class TestEMail(TestCase):
     def test_create_message_html(self):
         expected_msg = '<h1>Misconduct Report (2020-01-01 - 2021-01-01)' \
             '</h1><br>\n<b>Reported By:</b> Homer Simpson\n' \
-            '<h2>Game Information</h2>\n' \
-            '<p>Date: 2023-10-21T09:15:00.000-04:00</p>\n' \
-            '<p>Home Team: Springfield-1 Score: 0</p>\n' \
-            '<p>Away Team: Ogdenville-1 Score: 4</p>\n' \
-            '<h2>Officials</h2><p>Referee: Mickey Mouse</p>' \
-            '<h2>Narrative</h2>\n' \
-            'Player #4 Simpson (Springfield) violently struck AR1 in' \
-            ' the 43rd minute after an offside was called.\xa0 ' \
-            'Player was sent off.\xa0 IDK\xa0awarded yellow team'
+            '<h2>Game Information</h2>\n<p>Date: 10/21/2023</p>\n' \
+            '<p>Time: 09:15 AM</p>\n<p>Home Team:\n  Springfield-1 ' \
+            'Score: 0</p>\n  <strong>Coach:</strong> Mr. Burns\n' \
+            '</p>\n<p>Away Team:\n  Ogdenville-1 Score: 4</p>\n  ' \
+            '<strong>Coach:</strong> Mr. Smithers\n<h2>Officials</h2>' \
+            '<p>Referee: Mickey Mouse</p><h2>Narrative</h2>\n' \
+            'Player #4 Simpson (Springfield) violently struck AR1 in ' \
+            'the 43rd minute after an offside was called.\xa0 Player ' \
+            'was sent off.\xa0 IDK\xa0awarded yellow team'
 
         email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
                                    CONST_SENDER_NAME, 'test_password')
         CONST_DATA_MESSAGE['content']['start_date'] = \
-            datetime.strptime('01/01/2020', "%m/%d/%Y").date()
+            datetime.strptime('01/01/2020', CONST_DATE_FORMAT).date()
         CONST_DATA_MESSAGE['content']['end_date'] = \
-            datetime.strptime('01/01/2021', "%m/%d/%Y").date()
+            datetime.strptime('01/01/2021', CONST_DATE_FORMAT).date()
 
         message = email_client.create_message(CONST_DATA_MESSAGE['content'],
                                                 CONST_TEMPLATE_HTML)
@@ -183,9 +185,9 @@ class TestEMail(TestCase):
         email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
                                    CONST_SENDER_NAME, 'test_password')
         CONST_DATA_MESSAGE['content']['start_date'] = \
-            datetime.strptime('01/01/2020', "%m/%d/%Y").date()
+            datetime.strptime('01/01/2020', CONST_DATE_FORMAT).date()
         CONST_DATA_MESSAGE['content']['end_date'] = \
-            datetime.strptime('01/01/2021', "%m/%d/%Y").date()
+            datetime.strptime('01/01/2021', CONST_DATE_FORMAT).date()
 
         with self.assertLogs(level='DEBUG') as cm:
             message = email_client.create_message(CONST_DATA_MESSAGE['content'],

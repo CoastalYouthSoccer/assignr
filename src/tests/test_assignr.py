@@ -223,6 +223,40 @@ class TestAssignr(TestCase):
         self.assertEqual(cm.output, ["ERROR:root:Failed to get referee information: 500"])
         self.assertEqual(result, {})
 
+#    def test_get_referees(self):
+#        payload = [{
+#            'id': 3881670, 'no_show': False,
+#            'position_name': 'Referee', 'no_show_status': None,
+#            'created': '2023-10-22T20:05:55.000-04:00',
+#            'updated': '2023-10-22T20:05:55.000-04:00',
+#            '_links': {
+#                'officials': {
+#                    'resource-type': 'user',
+#                    'href': 'https://api.assignr.com/api/v2/users/996657.json'
+#                },
+#                'scheduled_official': {
+#                    'resource-type': 'user',
+#                    'href': 'https://api.assignr.com/api/v2/users/996657.json'
+#                }
+#            }
+#        }, {
+#            'id': 3881673, 'no_show': False,
+#            'position_name': 'Asst. Referee', 'no_show_status': None,
+#            'created': '2023-10-22T20:05:55.000-04:00',
+#            'updated': '2023-10-22T20:05:55.000-04:00',
+#            '_links': {}
+#        }, {
+#            'id': 3881676, 'no_show': False,
+#            'position_name': 'Asst. Referee', 'no_show_status': None,
+#            'created': '2023-10-22T20:05:55.000-04:00',
+#            'updated': '2023-10-22T20:05:55.000-04:00',
+#            '_links': {}
+#        }]
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        referees = temp.get_referees(payload)
+#        self.assertIsInstance(referees, list)
+
 #    @patch(ASSIGNR_REQUESTS)
 #    def test_valid_get_misconduct(self, mock_requests):
 #        mock_requests.post.return_value = mock_auth_response

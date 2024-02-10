@@ -4,6 +4,7 @@ from email.message import EmailMessage
 from email.headerregistry import Address
 import smtplib, ssl
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from helpers.helpers import format_date_mm_dd_yyyy, format_date_hh_mm
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +51,13 @@ class EMailClient():
     def create_message(self, content, template_name):
         logger.debug('Starting create message ...')
         message = None
-        environment = Environment(
+        jinja_env = Environment(
             autoescape=True,
             loader=FileSystemLoader(self.template_dir))
+        jinja_env.filters['format_mm_dd_yyyy'] = format_date_mm_dd_yyyy
+        jinja_env.filters['format_hh_mm'] = format_date_hh_mm
         try:
-            template = environment.get_template(template_name)
+            template = jinja_env.get_template(template_name)
             message = template.render(content)
         except TemplateNotFound as tf:
             logger.error(f"Missing File: {tf}")

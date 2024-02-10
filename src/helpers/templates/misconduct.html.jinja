@@ -4,9 +4,15 @@
 <br>
 <b>Reported By:</b> {{ misconduct['author'] }}
 <h2>Game Information</h2>
-<p>Date: {{ misconduct['game_dt'] }}</p>
-<p>Home Team: {{ misconduct['home_team']}} Score: {{ misconduct['home_team_score'] }}</p>
-<p>Away Team: {{ misconduct['away_team']}} Score: {{ misconduct['away_team_score'] }}</p>
+<p>Date: {{ misconduct['game_dt'] | format_mm_dd_yyyy }}</p>
+<p>Time: {{ misconduct['game_dt'] | format_hh_mm }}</p>
+<p>Home Team:
+  {{ misconduct['home_team'] }} Score: {{ misconduct['home_team_score'] }}</p>
+  <strong>Coach:</strong> {{ misconduct['home_coach'] }}
+</p>
+<p>Away Team:
+  {{ misconduct['away_team'] }} Score: {{ misconduct['away_team_score'] }}</p>
+  <strong>Coach:</strong> {{ misconduct['away_coach'] }}
 <h2>Officials</h2>
 {%- for official in misconduct['officials'] -%}
 <p>{{ official['position'] }}: {{ official['first_name'] }} {{ official ['last_name'] }}</p>
