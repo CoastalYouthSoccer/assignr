@@ -1,3 +1,4 @@
+from datetime import datetime
 import requests
 import logging
 
@@ -136,25 +137,28 @@ class Assignr:
         try:
             for item in response['_embedded']['game_reports']:
                 if item['misconduct']:
-                    referees = self.get_referees(item['_embedded']['officials'])
                     game_info = get_game_information(item["_embedded"]["game"])
-                    misconducts.append({
-                        'home_team_score': item['home_team_score'],
-                        'away_team_score': item['away_team_score'],
-                        'text': item['text'],
-                        'html': item['html'],
-                        'officials': referees,
-                        'author': f'{item["_embedded"]["author"]["first_name"]} {item["_embedded"]["author"]["last_name"]}',
-                        'game_dt': game_info['start_time'],
-                        'home_team': game_info['home_team'],
-                        'away_team': game_info['away_team'],
-                        'venue': game_info['venue'],
-                        'sub_venue': game_info['sub_venue'],
-                        'game_type': game_info['game_type'],
-                        'age_group': game_info['age_group'],
-                        'gender': game_info['gender'],
-                        'coach': 'Unknown'
-                    })
+                    dt = datetime.strptime(game_info['date'], '%b %d %Y').date()
+                    if dt >= start_dt and dt <= end_dt:
+                        referees = self.get_referees(item['_embedded']['officials'])
+                        misconducts.append({
+                            'home_team_score': item['home_team_score'],
+                            'away_team_score': item['away_team_score'],
+                            'text': item['text'],
+                            'html': item['html'],
+                            'officials': referees,
+                            'author': f'{item["_embedded"]["author"]["first_name"]} {item["_embedded"]["author"]["last_name"]}',
+                            'game_dt': game_info['start_time'],
+                            'home_team': game_info['home_team'],
+                            'away_team': game_info['away_team'],
+                            'venue': game_info['venue'],
+                            'sub_venue': game_info['sub_venue'],
+                            'game_type': game_info['game_type'],
+                            'age_group': game_info['age_group'],
+                            'gender': game_info['gender'],
+                            'home_coach': 'Unknown',
+                            'away_coach': 'Unknown'
+                        })
 
         except KeyError as ke:
             logging.error(f"Key: {ke}, missing from Game Report response")

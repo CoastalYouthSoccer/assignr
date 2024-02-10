@@ -118,11 +118,13 @@ def main():
         if misconduct['age_group'] in coaches and \
             misconduct['gender'] in coaches[misconduct['age_group']] and \
             misconduct['home_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
-            misconduct['coach'] = coaches[misconduct['age_group']] \
+            misconduct['home_coach'] = coaches[misconduct['age_group']] \
         [misconduct['gender']][misconduct['home_team']]
-
-#    with open('misconducts.json') as f_in:
-#        misconducts = json.load(f_in)
+        if misconduct['age_group'] in coaches and \
+            misconduct['gender'] in coaches[misconduct['age_group']] and \
+            misconduct['away_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
+            misconduct['away_coach'] = coaches[misconduct['age_group']] \
+        [misconduct['gender']][misconduct['away_team']]
 
     email_content = {
         'subject': f'Misconduct: {args["start_date"]} - {args["end_date"]}',
