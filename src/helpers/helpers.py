@@ -1,4 +1,5 @@
 from os import environ
+import dateutil.parser
 import logging
 from google import auth
 from googleapiclient.discovery import build
@@ -7,6 +8,29 @@ from googleapiclient.errors import HttpError
 logger = logging.getLogger(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
+
+# Jinja template formatters
+def format_date_mm_dd_yyyy(date_str) -> str:
+    formatted_date = None
+    try:
+        dt = dateutil.parser.parse(date_str)
+        formatted_date = dt.strftime("%m/%d/%Y")
+    except dateutil.parser.ParserError:
+        logger.error(f"Failed to parse date: {date_str}")
+    except dateutil.parser.UnknownTimezoneWarning:
+        logger.error(f"Invalid Time zone: {date_str}")
+    return formatted_date
+
+def format_date_hh_mm(date_str) -> str:
+    formatted_time = None
+    try:
+        dt = dateutil.parser.parse(date_str)
+        formatted_time = dt.strftime("%I:%M %p")
+    except dateutil.parser.ParserError:
+        logger.error(f"Failed to parse date: {date_str}")
+    except dateutil.parser.UnknownTimezoneWarning:
+        logger.error(f"Invalid Time zone: {date_str}")
+    return formatted_time
 
 def load_sheet(sheet_id, sheet_range) -> list:
     credentials, _ = auth.default()
