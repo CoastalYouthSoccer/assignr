@@ -110,10 +110,8 @@ class TestEmailHelpers(TestCase):
         self.assertEqual(result, expected_result)
 
 class TestEMail(TestCase):
-    def test_missing_subject(self):
-        data = {
-            'content': CONST_EMAIL
-        }
+    def test_send_email_missing_subject_content(self):
+        data = {}
 
         email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
                                    CONST_SENDER_NAME, 'test_password')
@@ -123,8 +121,52 @@ class TestEMail(TestCase):
         self.assertEqual(result, 33)
         self.assertEqual(cm.output, [
             "DEBUG:helpers.email:Starting send email ...",
+            "ERROR:helpers.email:'content' is required",
             "ERROR:helpers.email:'subject' is required"
         ])
+
+#    def test_send_email_create_is_none(self):
+#        data = {
+#            'subject': 'Misconduct: 2023-10-01 - 2023-10-31',
+#            'content': {
+#                'start_date': datetime.date(2023, 10, 1), 
+#                'end_date': datetime.date(2023, 10, 31),
+#                'misconducts': 
+#                [{
+#                    'home_team_score': '0', 'away_team_score': '4', 
+#                    'text': 'Player #4 White (Hanover) violently struck ' \
+#                    'AR1 in the 43rd minute after an offside was called.\xa0' \
+#                    ' Player was sent off.\xa0 IDK\xa0awarded yellow team',
+#                    'html': '<div class="trix-content"> <div>Player #4 White' \
+#                    ' (Hanover) violently struck AR1 in the 43rd minute after ' \
+#                    'an offside was called. Player was sent off. IDK awarded ' \
+#                    'yellow team</div> </div>', 
+#                    'officials':
+#                    [{
+#                        'no_show': False, 'position': 'Referee', 
+#                        'first_name': 'Mickey', 'last_name': 'Mouse'
+#                    }],
+#                    'author': 'Pluto', 'game_dt': '2023-10-21T09:15:00.000-04:00',
+#                    'home_team': 'Orlando-1', 'away_team': 'Miami-1',
+#                    'venue': 'Disney World', 'sub_venue': 'Epcot', 
+#                    'game_type': 'Coastal', 'age_group': 'Grade 5/6',
+#                    'gender': 'Boys', 'home_coach': 'Mr. Burns',
+#                    'away_coach': 'Mr. Smithers'
+#                }]
+#            }
+#        }
+#
+#        email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
+#                                   CONST_SENDER_NAME, 'test_password')
+#        with self.assertLogs(level='DEBUG') as cm:
+#            result = email_client.send_email(data, CONST_SENDER_EMAIL,
+#                                             'no_template')
+#        self.assertEqual(result, 33)
+#        self.assertEqual(cm.output, [
+#            "DEBUG:helpers.email:Starting send email ...",
+#            "ERROR:helpers.email:'content' is required",
+#            "ERROR:helpers.email:'subject' is required"
+#        ])
 
     def test_create_message_missing_template(self):
         email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
@@ -146,7 +188,6 @@ class TestEMail(TestCase):
 
         message = email_client.create_message([], CONST_TEMPLATE_HTML)
         self.assertEqual( message, expected_msg)
-
 
     def test_create_message_html(self):
         expected_msg = '<h1>Misconduct Report (2020-01-01 - 2021-01-01)' \
