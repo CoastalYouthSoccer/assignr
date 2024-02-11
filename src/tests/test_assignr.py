@@ -1,6 +1,6 @@
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
-from assignr.assignr import Assignr
+from assignr.assignr import (Assignr, get_game_information)
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
@@ -128,6 +128,22 @@ class TestAssignr(TestCase):
         self.assertEqual(cm.output, ["ERROR:root:Site id not found"])
         self.assertIsNone(temp.site_id)
 
+
+    @patch(ASSIGNR_REQUESTS)
+    def test_site_id_invalid_response(self, mock_requests):
+        mock_requests.post.return_value = mock_auth_response
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_requests.get.return_value = mock_response
+
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        with self.assertLogs(level='INFO') as cm:
+            temp.get_site_id()
+        self.assertIsNone(temp.site_id)
+        self.assertEqual(cm.output, ["ERROR:root:Response code 500 returned for get_site_id"])
+
     @patch(ASSIGNR_REQUESTS)
     def test_valid_referee_information(self, mock_requests):
         mock_requests.post.return_value = mock_auth_response
@@ -225,22 +241,24 @@ class TestAssignr(TestCase):
 
 #    def test_get_referees(self):
 #        payload = [{
-#            'id': 3881670, 'no_show': False,
+#            'id': 12345, 'no_show': False,
 #            'position_name': 'Referee', 'no_show_status': None,
-#            'created': '2023-10-22T20:05:55.000-04:00',
-#            'updated': '2023-10-22T20:05:55.000-04:00',
 #            '_links': {
 #                'officials': {
 #                    'resource-type': 'user',
-#                    'href': 'https://api.assignr.com/api/v2/users/996657.json'
+#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
 #                },
 #                'scheduled_official': {
 #                    'resource-type': 'user',
-#                    'href': 'https://api.assignr.com/api/v2/users/996657.json'
+#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
+#                },
+#                'assignment': {
+#                    'resource-type': 'assignment',
+#                    'href': 'https://api.assignr.com/api/v2/assignments/123456.json'
 #                }
 #            }
 #        }, {
-#            'id': 3881673, 'no_show': False,
+#            'id': 23456, 'no_show': False,
 #            'position_name': 'Asst. Referee', 'no_show_status': None,
 #            'created': '2023-10-22T20:05:55.000-04:00',
 #            'updated': '2023-10-22T20:05:55.000-04:00',
@@ -252,10 +270,14 @@ class TestAssignr(TestCase):
 #            'updated': '2023-10-22T20:05:55.000-04:00',
 #            '_links': {}
 #        }]
+#        expected_results = [
+#            {'no_show': False, 'position': 'Referee', 'first_name': 'Mickey', 'last_name': 'Mouse'},
+#
+#        ]
 #        temp = Assignr('123', '234', '345', BASE_URL,
 #                       AUTH_URL)
 #        referees = temp.get_referees(payload)
-#        self.assertIsInstance(referees, list)
+#        self.assertEqual(referees, expected_results)
 
 #    @patch(ASSIGNR_REQUESTS)
 #    def test_valid_get_misconduct(self, mock_requests):
@@ -447,3 +469,35 @@ class TestAssignr(TestCase):
         self.assertEqual(cm.output, 
             ["ERROR:assignr.assignr:Key: 'all_day', missing from Availability response"])
         self.assertEqual(result, [])
+
+
+class TestAssignrHelpers(TestCase):
+    def test_get_game_information(self):
+        payload = {
+            'id': 'some_id',
+            'localized_date': 'date',
+            'localized_time': 'time',
+            'start_time': 'start_time',
+            'home_team': 'home team',
+            'away_team': 'away team',
+            'age_group': 'age group',
+            'venue': 'venue',
+            'gender': 'boys',
+            'subvenue': 'sub venue',
+            'game_type': 'game type'
+        }
+        expected_results = {
+            'id': 'some_id',
+            'date': 'date',
+            'time': 'time',
+            'start_time': 'start_time',
+            'home_team': 'home team',
+            'away_team': 'away team',
+            'age_group': 'age group',
+            'venue': 'venue',
+            'gender': 'boys',
+            'sub_venue': 'sub venue',
+            'game_type': 'game type'
+        }
+        result = get_game_information(payload)
+        self.assertEqual(result, expected_results)

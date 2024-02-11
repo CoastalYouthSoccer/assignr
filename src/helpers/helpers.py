@@ -19,6 +19,8 @@ def format_date_mm_dd_yyyy(date_str) -> str:
         logger.error(f"Failed to parse date: {date_str}")
     except dateutil.parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date_str}")
+    except Exception as e:
+        logger.error(f"Unknown error: {e}")
     return formatted_date
 
 def format_date_hh_mm(date_str) -> str:
@@ -30,6 +32,8 @@ def format_date_hh_mm(date_str) -> str:
         logger.error(f"Failed to parse date: {date_str}")
     except dateutil.parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date_str}")
+    except Exception as e:
+        logger.error(f"Unknown error: {e}")
     return formatted_time
 
 def load_sheet(sheet_id, sheet_range) -> list:
