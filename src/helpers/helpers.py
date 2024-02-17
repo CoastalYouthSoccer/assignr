@@ -9,6 +9,14 @@ logger = logging.getLogger(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
+def format_date_yyyy_mm_dd(date) -> str:
+    formatted_date = None
+    try:
+        formatted_date = date.strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.error(f"Failed to format date: {date}, error: {e}")
+    return formatted_date
+    
 # Jinja template formatters
 def format_date_mm_dd_yyyy(date_str) -> str:
     formatted_date = None
