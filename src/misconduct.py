@@ -7,7 +7,8 @@ from datetime import (datetime, timedelta)
 
 from assignr.assignr import Assignr
 from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
-                             get_coach_information, get_email_vars)
+                             get_coach_information, get_email_vars,
+                             format_date_mm_dd_yyyy)
 from helpers.email import EMailClient
 
 env_file = environ.get('ENV_FILE', '.env')
@@ -127,7 +128,8 @@ def main():
         [misconduct['gender']][misconduct['away_team']]
 
     email_content = {
-        'subject': f'Misconduct: {args["start_date"]} - {args["end_date"]}',
+        'subject': f'Misconduct: {args["start_date"].strftime("%m/%d/%Y")}' \
+             f' - {args["end_date"].strftime("%m/%d/%Y")}',
         'content': {
             'start_date': args['start_date'],
             'end_date': args['end_date'],
