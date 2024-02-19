@@ -93,6 +93,18 @@ class Assignr:
                 referees.append(referee)
         return referees
 
+    def get_referees_by_assignments(self, payload):
+        referees = []
+        for official in payload:
+            official_info = official['_embedded']['official']
+            referees.append({
+                'accepted': official['accepted'],
+                'position': official['position'],
+                'first_name': official_info['first_name'],
+                'last_name': official_info['last_name']
+            })
+        return referees
+
     def get_referee_information(self, endpoint):
         if not self.token:
             self.authenticate()
@@ -200,3 +212,47 @@ class Assignr:
             logger.error(f"Key: {ke}, missing from Availability response")
 
         return availability
+
+    def get_league_games(self, league, start_dt, end_dt):
+        results = []
+
+        params = {
+            'search[start_date]': format_date_yyyy_mm_dd(start_dt),
+            'search[end_date]': format_date_yyyy_mm_dd(end_dt)
+        }
+
+        if self.site_id is None:
+            self.get_site_id()
+
+        status_code, response = self.get_requests(f'sites/{self.site_id}/games',
+                                                  params=params)
+
+        if status_code != 200:
+            logging.error(f'Failed to get games: {status_code}')
+            return results
+
+        try:
+            for item in response['_embedded']['games']:
+                if item['league'] == league:
+                    sub_item = item["_embedded"]
+                    assignor = f'{sub_item["assignor"]["first_name"]}' \
+                        f' {sub_item["assignor"]["last_name"]}'
+                    referees = self.get_referees_by_assignments(sub_item['assignments'])
+                    results.append({
+                        'officials': referees,
+                        'game_date': item["localized_date"],
+                        'game_time': item["localized_time"],
+                        'home_team': item["home_team"],
+                        'away_team': item["away_team"],
+                        'venue': sub_item["venue"]["name"],
+                        'sub_venue': item["subvenue"],
+                        'game_type': item["game_type"],
+                        'age_group': item["age_group"],
+                        'gender': item["gender"],
+                        'assignor': assignor
+                    })
+
+        except KeyError as ke:
+            logging.error(f"Key: {ke}, missing from Game response")
+
+        return results
