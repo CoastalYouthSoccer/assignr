@@ -95,13 +95,18 @@ class Assignr:
 
     def get_referees_by_assignments(self, payload):
         referees = []
+        first_name = None
+        last_name = None
         for official in payload:
-            official_info = official['_embedded']['official']
+            if '_embedded' in official and \
+                'official' in official['_embedded']:
+                first_name = official['_embedded']['official']['first_name']
+                last_name = official['_embedded']['official']['last_name']
             referees.append({
                 'accepted': official['accepted'],
                 'position': official['position'],
-                'first_name': official_info['first_name'],
-                'last_name': official_info['last_name']
+                'first_name': first_name,
+                'last_name': last_name
             })
         return referees
 
