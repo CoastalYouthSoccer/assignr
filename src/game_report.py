@@ -112,10 +112,10 @@ def main():
     coaches = get_coach_information(spreadsheet_vars['SPREADSHEET_ID'],
                                     spreadsheet_vars['SPREADSHEET_RANGE'])
 
-    misconducts = assignr.get_misconducts(args['start_date'],
-                                           args['end_date'])
+    reports = assignr.get_reports(args['start_date'],
+                                    args['end_date'])
     
-    for misconduct in misconducts:
+    for misconduct in reports:
         if misconduct['age_group'] in coaches and \
             misconduct['gender'] in coaches[misconduct['age_group']] and \
             misconduct['home_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
@@ -133,7 +133,7 @@ def main():
         'content': {
             'start_date': args['start_date'],
             'end_date': args['end_date'],
-            'misconducts': misconducts
+            'misconducts': reports
         }
     }
     response = send_email(email_vars, email_content, email_vars['EMAIL_TO'])

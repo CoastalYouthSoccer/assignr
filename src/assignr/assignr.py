@@ -1,9 +1,54 @@
 from datetime import datetime
 import requests
 import logging
+import re
 from helpers.helpers import format_date_yyyy_mm_dd
 
 logger = logging.getLogger(__name__)
+
+START_TIME = '.startTime'
+NOT_ASSIGNED = "Not Assigned"
+
+def get_match_count(data, match):
+    pattern = re.compile(match)
+
+    return sum(1 for key in data.keys() if pattern.match(key))
+
+def get_referees(payload):
+    pattern = r'\.officials\.\d+\.position'
+    found_cnt = get_match_count(payload, pattern)
+    results = []
+    for cnt in range(found_cnt):
+        results.append({
+            "name": payload[f'.officials.{cnt}.name'],
+            "position": payload[f'.officials.{cnt}.position']
+        })
+
+# Make sure three referees are in the dictionary. Assumes missing positions are ARs
+    for cnt in range(found_cnt, 3):
+        results.append({
+            "name": NOT_ASSIGNED,
+            "position": "Asst. Referee"
+        })
+    return results
+
+def get_misconducts(payload):
+    pattern = r'\.misconductGrid\.\d+\.name'
+    found_cnt = get_match_count(payload, pattern)
+    results = []
+    for cnt in range(found_cnt):
+        results.append({
+            "name": payload[f'.misconductGrid.{cnt}.name'],
+            "role": payload[f'.misconductGrid.{cnt}.role'],
+            "team": payload[f'.misconductGrid.{cnt}.team'],
+            "minute": payload[f'.misconductGrid.{cnt}.minute'],
+            "offense": payload[f'.misconductGrid.{cnt}.offense'],
+            "description": payload[f'.misconductGrid.{cnt}.description'],
+            "pass_number": payload[f'.misconductGrid.{cnt}.passIdNumber'],
+            "caution_send_off": payload[f'.misconductGrid.{cnt}.cautionSendOff']
+        })
+
+    return results
 
 def get_game_information(payload):
     return {
@@ -19,6 +64,32 @@ def get_game_information(payload):
         'sub_venue': payload["subvenue"],
         'game_type': payload["game_type"]
     }
+
+def process_game_report(data):
+    result = None
+    if data['.adminReview'] == True or \
+        data['.misconductCheckbox']:
+
+        result = {
+            "admin_review": data['.adminReview'],
+            "misconduct": data['.misconductCheckbox'],
+            "data": {
+                'home_team_score': data['.homeTeamScore'],
+                'away_team_score': data['.awayTeamScore'],
+                'officials': get_referees(data),
+                'author': data['author_name'],
+                'game_dt': data[START_TIME].date(),
+                'home_team': data['.home_team'],
+                'away_team': data['.away_team'],
+                'venue': data['.venue'],
+                'age_group': data['.age_group'],
+                'gender': data['.gender'],
+                'misconducts': get_misconducts(data),
+                'home_coach': 'Unknown',
+                'away_coach': 'Unknown'
+            }
+        }
+    return result
 
 
 class Assignr:
@@ -74,25 +145,6 @@ class Assignr:
             response = requests.get(f"{self.base_url}{end_point}", headers=headers, params=params)
         return response.status_code, response.json()
 
-    def get_referees(self, payload):
-        referees = []
-        for official in payload:
-            referee = {
-                'no_show': official['no_show'],
-                'position': official['position_name'],
-                'first_name': None,
-                'last_name': None
-            }
-# Checks to see if official was assigned. Usually happens when a full crew
-# isn't available. Aka: Only a center is available.
-            if 'official' in official['_links']:
-                ref_info = self.get_referee_information(
-                            official['_links']['official']['href'])
-                referee['first_name'] = ref_info['first_name']
-                referee['last_name'] = ref_info['last_name']
-                referees.append(referee)
-        return referees
-
     def get_referees_by_assignments(self, payload):
         referees = []
         first_name = None
@@ -134,52 +186,52 @@ class Assignr:
 
         return referee
 
-    def get_misconducts(self, start_dt, end_dt):
+    def get_reports(self, start_dt, end_dt):
         misconducts = []
-
-        params = {
-            'search[start_date]': format_date_yyyy_mm_dd(start_dt),
-            'search[end_date]': format_date_yyyy_mm_dd(end_dt)
+        admin_reports = []
+        page_nbr = 1
+        more_rows = True
+        reports = {
+            "misconducts": misconducts,
+            "admin_reports": admin_reports
         }
 
         if self.site_id is None:
             self.get_site_id()
 
-        status_code, response = self.get_requests(f'sites/{self.site_id}/game_reports',
-                                                  params=params)
+# Change from 108 to 1002 when CYSL game report implemented.
+        while more_rows:
+            status_code, response = self.get_requests('form/templates/108/submissions',
+                                                      params={'page': page_nbr})    
+            if status_code != 200:
+                logging.error(f'Failed to get reports: {status_code}')
+                more_rows = False
+                return reports
 
-        if status_code != 200:
-            logging.error(f'Failed to get misconducts: {status_code}')
-            return misconducts
+            try:
+                total_pages = response['page']['pages']
+                for item in response['_embedded']['form_submissions']:
+                    data_dict = {}
+                    for data in item['_embedded']['values']:
+                        data_dict[data['key']] = data['value']
 
-        try:
-            for item in response['_embedded']['game_reports']:
-                if item['misconduct']:
-                    game_info = get_game_information(item["_embedded"]["game"])
-                    referees = self.get_referees(item['_embedded']['officials'])
-                    misconducts.append({
-                        'home_team_score': item['home_team_score'],
-                        'away_team_score': item['away_team_score'],
-                        'text': item['text'],
-                        'html': item['html'],
-                        'officials': referees,
-                        'author': f'{item["_embedded"]["author"]["first_name"]} {item["_embedded"]["author"]["last_name"]}',
-                        'game_dt': game_info['start_time'],
-                        'home_team': game_info['home_team'],
-                        'away_team': game_info['away_team'],
-                        'venue': game_info['venue'],
-                        'sub_venue': game_info['sub_venue'],
-                        'game_type': game_info['game_type'],
-                        'age_group': game_info['age_group'],
-                        'gender': game_info['gender'],
-                        'home_coach': 'Unknown',
-                        'away_coach': 'Unknown'
-                    })
+                    data_dict[START_TIME] = datetime.fromisoformat(data_dict[START_TIME])
+                    temp_date = data_dict[START_TIME].date()
+                    if temp_date >= start_dt and temp_date <= end_dt:
+                        if data_dict['adminReview'] == True:
+                            reports['admin_reports'].append(data_dict)
+                        result = process_game_report(data_dict)
+                        if len(result['misconducts']) > 0:
+                            reports['misconducts'].append(result)
 
-        except KeyError as ke:
-            logging.error(f"Key: {ke}, missing from Game Report response")
+            except KeyError as ke:
+                logging.error(f"Key: {ke}, missing from Game Report response")
 
-        return misconducts
+            page_nbr += 1
+            if page_nbr > total_pages:
+                more_rows = False
+
+        return reports
 
     def get_availability(self, user_id, start_dt, end_dt):
         availability = []
