@@ -2,12 +2,18 @@ from datetime import datetime
 import requests
 import logging
 import re
-from helpers.helpers import format_date_yyyy_mm_dd
+from helpers.helpers import (format_date_yyyy_mm_dd, set_boolean_value)
 
 logger = logging.getLogger(__name__)
 
 START_TIME = '.startTime'
 NOT_ASSIGNED = "Not Assigned"
+SEARCH_START_DT = "search[start_date]"
+SEARCH_END_DT = "search[end_date]"
+ADMIN_REVIEW = ".adminReview"
+ADMIN_NARRATIVE = ".adminNarrative"
+CREW_CHANGES = ".crewChanges"
+NARRATIVE = ".narrative"
 
 def get_match_count(data, match):
     pattern = re.compile(match)
@@ -59,36 +65,55 @@ def get_game_information(payload):
         'home_team': payload["home_team"],
         'away_team': payload["away_team"],
         'age_group': payload["age_group"],
+        'league': payload["league"],
         'venue': payload["venue"],
         'gender': payload["gender"],
         'sub_venue': payload["subvenue"],
-        'game_type': payload["game_type"]
+        'game_type': payload["game_type"],
     }
 
 def process_game_report(data):
     result = None
-    if data['.adminReview'] == True or \
-        data['.misconductCheckbox']:
+    if ADMIN_REVIEW not in data:
+        if data[NARRATIVE]:
+            data[ADMIN_REVIEW] = 'True'
+        else:
+            data[ADMIN_REVIEW] = None
 
+    if ADMIN_NARRATIVE not in data:
+        data[ADMIN_NARRATIVE] = None
+
+    if CREW_CHANGES not in data:
+        data[CREW_CHANGES] = None
+
+    try:
         result = {
-            "admin_review": data['.adminReview'],
-            "misconduct": data['.misconductCheckbox'],
-            "data": {
-                'home_team_score': data['.homeTeamScore'],
-                'away_team_score': data['.awayTeamScore'],
-                'officials': get_referees(data),
-                'author': data['author_name'],
-                'game_dt': data[START_TIME].date(),
-                'home_team': data['.home_team'],
-                'away_team': data['.away_team'],
-                'venue': data['.venue'],
-                'age_group': data['.age_group'],
-                'gender': data['.gender'],
-                'misconducts': get_misconducts(data),
-                'home_coach': 'Unknown',
-                'away_coach': 'Unknown'
-            }
+            "admin_review": set_boolean_value(data[ADMIN_REVIEW]),
+            "misconduct": set_boolean_value(data['.misconductCheckbox']),
+            'assignments_correct': set_boolean_value(data['.assignmentsCorrect']),
+            'home_team_score': data['.homeTeamScore'],
+            'away_team_score': data['.awayTeamScore'],
+            'officials': get_referees(data),
+            'author': data['.author_name'],
+            'game_dt': data[START_TIME],
+            'home_team': data['.homeTeam'],
+            'away_team': data['.awayTeam'],
+            'venue_subvenue': data['.venue'],
+            'league': data['.league'],
+            'age_group': data['.ageGroup'],
+            'gender': data['.gender'],
+            'misconducts': get_misconducts(data),
+            'home_coach': 'Unknown',
+            'away_coach': 'Unknown',
+            'narrative': data[NARRATIVE],
+            'ejections': set_boolean_value(data['.ejections']),
+            'admin_narrative': data[ADMIN_NARRATIVE],
+            'crewChanges': data[CREW_CHANGES]
         }
+
+    except KeyError as ke:
+        logging.error(f"Key: {ke}, missing from process_game_report")
+
     return result
 
 
@@ -187,13 +212,19 @@ class Assignr:
         return referee
 
     def get_reports(self, start_dt, end_dt):
+        if not self.token:
+            self.authenticate()
+
         misconducts = []
         admin_reports = []
+        assignor_reports = []
         page_nbr = 1
         more_rows = True
+
         reports = {
             "misconducts": misconducts,
-            "admin_reports": admin_reports
+            "admin_reports": admin_reports,
+            'assignor_reports': assignor_reports
         }
 
         if self.site_id is None:
@@ -201,8 +232,13 @@ class Assignr:
 
 # Change from 108 to 1002 when CYSL game report implemented.
         while more_rows:
+            params = {
+                'page': page_nbr,
+                SEARCH_START_DT: start_dt,
+                SEARCH_END_DT: end_dt
+            }
             status_code, response = self.get_requests('form/templates/108/submissions',
-                                                      params={'page': page_nbr})    
+                                                      params=params)    
             if status_code != 200:
                 logging.error(f'Failed to get reports: {status_code}')
                 more_rows = False
@@ -216,13 +252,14 @@ class Assignr:
                         data_dict[data['key']] = data['value']
 
                     data_dict[START_TIME] = datetime.fromisoformat(data_dict[START_TIME])
-                    temp_date = data_dict[START_TIME].date()
-                    if temp_date >= start_dt and temp_date <= end_dt:
-                        if data_dict['adminReview'] == True:
-                            reports['admin_reports'].append(data_dict)
-                        result = process_game_report(data_dict)
-                        if len(result['misconducts']) > 0:
-                            reports['misconducts'].append(result)
+                    data_dict['.author_name'] = item['author_name']
+                    result = process_game_report(data_dict)
+                    if result['admin_review']:
+                        reports['admin_reports'].append(result)
+                    if result['misconduct']:
+                        reports['misconducts'].append(result)
+                    if result['assignments_correct'] == False:
+                        reports['assignor_reports'].append(result)
 
             except KeyError as ke:
                 logging.error(f"Key: {ke}, missing from Game Report response")
@@ -237,8 +274,8 @@ class Assignr:
         availability = []
         params = {
            'user_id': user_id,
-           'search[start_date]': start_dt,
-           'search[end_date]': end_dt
+           SEARCH_START_DT: start_dt,
+           SEARCH_END_DT: end_dt
        }
 
         status_code, response = self.get_requests(
@@ -274,8 +311,8 @@ class Assignr:
         results = []
 
         params = {
-            'search[start_date]': format_date_yyyy_mm_dd(start_dt),
-            'search[end_date]': format_date_yyyy_mm_dd(end_dt)
+            SEARCH_START_DT: format_date_yyyy_mm_dd(start_dt),
+            SEARCH_END_DT: format_date_yyyy_mm_dd(end_dt)
         }
 
         if self.site_id is None:
@@ -311,5 +348,43 @@ class Assignr:
 
         except KeyError as ke:
             logging.error(f"Key: {ke}, missing from Game response")
+
+        return results
+
+    def get_assignors(self):
+        results = []
+        if not self.token:
+            self.authenticate()
+
+        page_nbr = 1
+        more_rows = True
+
+        if self.site_id is None:
+            self.get_site_id()
+
+        while more_rows:
+            status_code, response = self.get_requests(f'sites/{self.site_id}/users',
+                                                      params={'page': page_nbr})
+            if status_code != 200:
+                logging.error(f'Failed to get reports: {status_code}')
+                more_rows = False
+                return results
+
+            try:
+                total_pages = response['page']['pages']
+                for item in response['_embedded']['users']:
+                    if item['assignor'] and item['active']:
+                        results.append({
+                            'first_name': item['first_name'],
+                            'last_name': item['last_name'],
+                            'email': item['email_addresses'][0]
+                        })
+
+            except KeyError as ke:
+                logging.error(f"Key: {ke}, missing from Game Report response")
+
+            page_nbr += 1
+            if page_nbr > total_pages:
+                more_rows = False
 
         return results

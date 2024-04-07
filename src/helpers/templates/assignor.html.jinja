@@ -1,0 +1,56 @@
+{%- if report -%}
+<h1>Assignor Report ({{ start_date }} - {{ end_date }})</h1>
+<h2>Game Information</h2>
+<table>
+  <tr>
+    <td><b>Reported By:</b></td>
+    <td>{{ report['author'] }}</td>
+  </tr>
+  <tr>
+    <td><b>Date/Time:</b></td>
+    <td>{{ report['game_dt'] | format_mm_dd_yyyy }} @ {{ report['game_dt'] | format_hh_mm }}</td>
+  </tr>
+  <tr>
+    <td><b>Age Group/Gender:</b></td>
+    <td>{{ report['age_group'] }} - {{ report['gender'] }}</td>
+  </tr>
+  <tr>
+    <td><b>Venue:</b></td>
+    <td>{{ report['venue_subvenue'] }}</td>
+  </tr>
+</table>
+<h3>Team Information</h3>
+<table>
+  <tr>
+    <th>Home/Away</th>
+    <th>Team</th>
+    <th>Score</th>
+    <th>Coach</th>
+  </tr>
+  <tr>
+    <td>Away</td>
+    <td>{{ report['away_team'] }}</td>
+    <td style="text-align:center;">{{ report['away_team_score'] }}</td>
+    <td>{{ report['away_coach'] }}</td>
+  </tr>
+  <tr>
+    <td>Home</td>
+    <td>{{ report['home_team'] }}</td>
+    <td style="text-align:center;">{{ report['home_team_score'] }}</td>
+    <td>{{ report['home_coach'] }}</td>
+  </tr>
+</table>
+<h2>Officials</h2>
+{%- for official in report['officials'] -%}
+<p>{{ official['position'] }} - {{ official['name'] }}</p>
+{%- endfor -%}
+<h2>Details</h2>
+<h3>Crew Changes</h3>
+<p>Assignment Correct: {{ report['assignments_correct'] }}</p>
+{{ report['crewChanges'] }}
+<h3>Narrative</h3>
+{{ report['narrative'] }}
+{%- else -%}
+<p><strong>No Assignor Reports</strong></p>
+{%- endif -%}
+

@@ -396,7 +396,7 @@ class TestAssignr(TestCase):
 #        self.assertEqual(result, [])
 
     @patch(ASSIGNR_REQUESTS)
-    def test_invalid_get_misconduct(self, mock_requests):
+    def test_invalid_get_reports(self, mock_requests):
         mock_requests.post.return_value = mock_auth_response
 
         mock_response = MagicMock()
@@ -409,10 +409,11 @@ class TestAssignr(TestCase):
                        AUTH_URL)
         temp.site_id = 100
         with self.assertLogs(level='INFO') as cm:
-            result = temp.get_misconducts(CONST_DATE_2022_01_01,
-                                          CONST_DATE_2022_01_01)
-        self.assertEqual(cm.output, ["ERROR:root:Failed to get misconducts: 500"])
-        self.assertEqual(result, [])
+            result = temp.get_reports(CONST_DATE_2022_01_01,
+                                        CONST_DATE_2022_01_01)
+        self.assertEqual(cm.output, ["ERROR:root:Failed to get reports: 500"])
+        self.assertEqual(result, {'misconducts': [], 'admin_reports': [],
+                                  'assignor_reports': []})
 
     @patch(ASSIGNR_REQUESTS)
     def test_valid_get_availability(self, mock_requests):
@@ -707,6 +708,7 @@ class TestAssignrHelpers(TestCase):
             ".awayTeam": "2009A-Bolts-Girls",
             ".homeTeam": "2007A-Bolts-Girls",
             ".ejections": "true",
+            ".league": "Springfield",
             ".misconductGrid.0.name": "Homer Simpson",
             ".misconductGrid.0.role": 'player',
             ".misconductGrid.0.team": "home",
@@ -744,6 +746,7 @@ class TestAssignrHelpers(TestCase):
             ".awayTeam": "2009A-Bolts-Girls",
             ".homeTeam": "2007A-Bolts-Girls",
             ".ejections": "true",
+            ".league": "Springfield",
             ".misconductGrid.0.name": "Homer Simpson",
             ".misconductGrid.0.role": 'player',
             ".misconductGrid.0.team": "home",
@@ -769,7 +772,8 @@ class TestAssignrHelpers(TestCase):
             'venue': 'venue',
             'gender': 'boys',
             'subvenue': 'sub venue',
-            'game_type': 'game type'
+            'game_type': 'game type',
+            'league': 'league'
         }
         expected_results = {
             'id': 'some_id',
@@ -782,7 +786,25 @@ class TestAssignrHelpers(TestCase):
             'venue': 'venue',
             'gender': 'boys',
             'sub_venue': 'sub venue',
-            'game_type': 'game type'
+            'game_type': 'game type',
+            'league': 'league'
         }
         result = get_game_information(payload)
         self.assertEqual(result, expected_results)
+
+    def test_get_game_information_error(self):
+        payload = {
+            'id': 'some_id',
+            'localized_date': 'date',
+            'localized_time': 'time',
+            'start_time': 'start_time',
+            'home_team': 'home team',
+            'away_team': 'away team',
+            'age_group': 'age group',
+            'venue': 'venue',
+            'gender': 'boys',
+            'subvenue': 'sub venue',
+            'game_type': 'game type'
+        }
+
+        self.assertRaises(KeyError, get_game_information, payload)

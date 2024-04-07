@@ -190,17 +190,7 @@ class TestEMail(TestCase):
         self.assertEqual( message, expected_msg)
 
     def test_create_message_html(self):
-        expected_msg = '<h1>Misconduct Report (2020-01-01 - 2021-01-01)' \
-            '</h1><br>\n<b>Reported By:</b> Homer Simpson\n' \
-            '<h2>Game Information</h2>\n<p>Date: 10/21/2023</p>\n' \
-            '<p>Time: 09:15 AM</p>\n<p>Home Team:\n  Springfield-1 ' \
-            'Score: 0</p>\n  <strong>Coach:</strong> Mr. Burns\n' \
-            '</p>\n<p>Away Team:\n  Ogdenville-1 Score: 4</p>\n  ' \
-            '<strong>Coach:</strong> Mr. Smithers\n<h2>Officials</h2>' \
-            '<p>Referee: Mickey Mouse</p><h2>Narrative</h2>\n' \
-            'Player #4 Simpson (Springfield) violently struck AR1 in ' \
-            'the 43rd minute after an offside was called.\xa0 Player ' \
-            'was sent off.\xa0 IDK\xa0awarded yellow team'
+        expected_msg = '<h1>Misconduct Report (2020-01-01 - 2021-01-01)</h1><br>\n<b>Reported By:</b> Homer Simpson\n<h2>Game Information</h2>\n<p>Date: 10/21/2023</p>\n<p>Time: 09:15 AM</p>\n<p>Venue: Springfield Elementary School</p>\n<p>Home Team:\n  Springfield-1 Score: 0</p>\n  <strong>Coach:</strong> Mr. Burns\n</p>\n<p>Away Team:\n  Ogdenville-1 Score: 4</p>\n  <strong>Coach:</strong> Mr. Smithers\n<h2>Officials</h2><p>Referee: </p><h2>Details</h2>\n<table>\n  <tr>\n    <th>Result</th>\n    <th>Name</th>\n    <th>Coach/Player</th>\n    <th>Pass Id/#</th>\n    <th>Team</th>\n    <th>Minute</th>\n    <th>Offense</th>\n    <th>Description</th>\n  </tr>\n  <tr></table>'''
 
         email_client = EMailClient('test', 587, CONST_SENDER_EMAIL,
                                    CONST_SENDER_NAME, 'test_password')

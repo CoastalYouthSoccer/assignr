@@ -8,7 +8,7 @@ from datetime import (datetime, timedelta)
 from assignr.assignr import Assignr
 from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              get_coach_information, get_email_vars,
-                             format_date_mm_dd_yyyy)
+                             create_message, get_assignor_information)
 from helpers.email import EMailClient
 
 env_file = environ.get('ENV_FILE', '.env')
@@ -78,14 +78,86 @@ def get_arguments(args):
 
     return rc, arguments
 
-def send_email(email_vars, misconducts, send_to):
+def send_email(email_vars, subject, message, send_to):
     email_client = EMailClient(
         email_vars['EMAIL_SERVER'], email_vars['EMAIL_PORT'],
         email_vars['EMAIL_USERNAME'], 'Game Report',
         email_vars['EMAIL_PASSWORD'])
 
-    return email_client.send_email(misconducts, "misconduct.html.jinja",
+    return email_client.send_email(subject, message,
                                    send_to, True)
+
+def get_coaches_name(coaches, game_data, team):
+    try:
+        return coaches[game_data['age_group']][game_data['gender']][game_data[team]]
+    except KeyError:
+        return 'Unknown'
+
+def process_administrator(email_vars, reports, start_date, end_date):
+    subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
+             f' - {end_date.strftime("%m/%d/%Y")}'
+
+    content = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'reports': reports
+    }
+
+    message = create_message(content, 'administrator.html.jinja')
+
+    response = send_email(email_vars, subject, message,
+                          email_vars['ADMIN_EMAIL'])
+    if response:
+        logger.error(response)
+
+    logger.info("Completed Administrator Report")
+
+def process_misconducts(email_vars, misconducts, coaches, start_date,
+                        end_date):
+# Update misconducts with coach's names
+    for misconduct in misconducts:
+        misconduct['home_coach'] = get_coaches_name(coaches, misconduct, 'home_team')
+        misconduct['away_coach'] = get_coaches_name(coaches, misconduct, 'away_team')
+
+    subject = f'Misconduct: {start_date.strftime("%m/%d/%Y")}' \
+             f' - {end_date.strftime("%m/%d/%Y")}'
+    content = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'misconducts': misconducts
+    }
+
+    message = create_message(content, 'misconduct.html.jinja')
+
+    response = send_email(email_vars, subject, message,
+                          email_vars['MISCONDUCTS_EMAIL'])
+
+    if response:
+        logger.error(response)
+
+    logger.info("Completed Misconduct Report")
+
+def process_assignor_reports(email_vars, reports, start_date, end_date,
+                                assignors):
+    subject = f'Game Reports Needing Attention: {start_date.strftime("%m/%d/%Y")}' \
+             f' - {end_date.strftime("%m/%d/%Y")}'
+
+    for report in reports:
+        content = {
+            'start_date': start_date,
+            'end_date': end_date,
+            'report': report
+        }
+
+        message = create_message(content, 'assignor.html.jinja')
+
+        response = send_email(email_vars, subject, message,
+                              assignors[report['league']][0]['email'])
+    
+        if response:
+            logger.error(response)
+
+    logger.info("Completed Assignors Report")
 
 def main():
     logger.info("Starting Misconduct Report")
@@ -111,38 +183,17 @@ def main():
 
     coaches = get_coach_information(spreadsheet_vars['SPREADSHEET_ID'],
                                     spreadsheet_vars['SPREADSHEET_RANGE'])
+    
+    assignors = get_assignor_information()
 
     reports = assignr.get_reports(args['start_date'],
                                     args['end_date'])
-    
-    for misconduct in reports:
-        if misconduct['age_group'] in coaches and \
-            misconduct['gender'] in coaches[misconduct['age_group']] and \
-            misconduct['home_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
-            misconduct['home_coach'] = coaches[misconduct['age_group']] \
-        [misconduct['gender']][misconduct['home_team']]
-        if misconduct['age_group'] in coaches and \
-            misconduct['gender'] in coaches[misconduct['age_group']] and \
-            misconduct['away_team'] in coaches[misconduct['age_group']][misconduct['gender']]:
-            misconduct['away_coach'] = coaches[misconduct['age_group']] \
-        [misconduct['gender']][misconduct['away_team']]
-
-    email_content = {
-        'subject': f'Misconduct: {args["start_date"].strftime("%m/%d/%Y")}' \
-             f' - {args["end_date"].strftime("%m/%d/%Y")}',
-        'content': {
-            'start_date': args['start_date'],
-            'end_date': args['end_date'],
-            'misconducts': reports
-        }
-    }
-    response = send_email(email_vars, email_content, email_vars['EMAIL_TO'])
-    if response:
-        logger.error(response)
-        exit(55)
-
-    logger.info("Completed Misconduct Report")
-
+    process_misconducts(email_vars, reports['misconducts'], coaches,
+                        args['start_date'], args['end_date'])
+    process_administrator(email_vars, reports['admin_reports'],
+                        args['start_date'], args['end_date'])
+    process_assignor_reports(email_vars, reports['assignor_reports'],
+                             args['start_date'], args['end_date'], assignors)
 
 if __name__ == "__main__":
     main()
