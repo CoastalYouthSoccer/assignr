@@ -10,6 +10,10 @@ from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              get_coach_information, get_email_vars,
                              create_message, get_assignor_information)
 from helpers.email import EMailClient
+from helpers import constants
+
+START_DATE = "start_date"
+END_DATE = "end_date"
 
 env_file = environ.get('ENV_FILE', '.env')
 load_dotenv(env_file)
@@ -22,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def get_arguments(args):
     arguments = {
-        'start_date': None, 'end_date': None
+        START_DATE: None, END_DATE: None
     }
 
     rc = 0
@@ -41,48 +45,48 @@ def get_arguments(args):
             logger.error(USAGE)
             return 99, arguments
         elif opt in ("-s", "--start-date"):
-            arguments['start_date'] = arg
+            arguments[START_DATE] = arg
         elif opt in ("-e", "--end-date"):
-            arguments['end_date'] = arg
+            arguments[END_DATE] = arg
 
 
     try:
-        if arguments['end_date']:
-            arguments['end_date'] = \
-                datetime.strptime(arguments['end_date'], "%m/%d/%Y").date()
+        if arguments[END_DATE]:
+            arguments[END_DATE] = \
+                datetime.strptime(arguments[END_DATE], "%m/%d/%Y").date()
         else:
-            arguments['end_date'] = datetime.now().date()
-            logger.info(f"No end date provided, setting to {arguments['end_date']}")
-        logger.info(f"End Date set to {arguments['end_date']}")
+            arguments[END_DATE] = datetime.now().date()
+            logger.info(f"No end date provided, setting to {arguments[END_DATE]}")
+        logger.info(f"End Date set to {arguments[END_DATE]}")
     except ValueError:
-        logger.error(f"End Date value, {arguments['end_date']} is invalid")
+        logger.error(f"End Date value, {arguments[END_DATE]} is invalid")
         rc = 88
 
     try:
-        if arguments['start_date']:
-            arguments['start_date'] = \
-                datetime.strptime(arguments['start_date'], "%m/%d/%Y").date()
+        if arguments[START_DATE]:
+            arguments[START_DATE] = \
+                datetime.strptime(arguments[START_DATE], "%m/%d/%Y").date()
         else:
-            arguments['start_date'] = arguments['end_date'] - \
+            arguments[START_DATE] = arguments[END_DATE] - \
                 timedelta(days=7)
-            logger.info(f"No start date provided, setting to {arguments['start_date']}")
+            logger.info(f"No start date provided, setting to {arguments[START_DATE]}")
 
-        logger.info(f"Start Date set to {arguments['start_date']}")           
+        logger.info(f"Start Date set to {arguments[START_DATE]}")           
     except ValueError:
-        logger.error(f"Start Date value, {arguments['start_date']} is invalid")
+        logger.error(f"Start Date value, {arguments[START_DATE]} is invalid")
         rc = 88
 
-    if arguments['start_date'] > arguments['end_date']:
-        logger.error(f"Start Date {arguments['start_date']} is after End Date {arguments['end_date']}")
+    if arguments[START_DATE] > arguments[END_DATE]:
+        logger.error(f"Start Date {arguments[START_DATE]} is after End Date {arguments[END_DATE]}")
         rc = 88
 
     return rc, arguments
 
 def send_email(email_vars, subject, message, send_to):
     email_client = EMailClient(
-        email_vars['EMAIL_SERVER'], email_vars['EMAIL_PORT'],
-        email_vars['EMAIL_USERNAME'], 'Game Report',
-        email_vars['EMAIL_PASSWORD'])
+        email_vars[constants.EMAIL_SERVER], email_vars[constants.EMAIL_PORT],
+        email_vars[constants.EMAIL_USERNAME], 'Game Report',
+        email_vars[constants.EMAIL_PASSWORD])
 
     return email_client.send_email(subject, message,
                                    send_to, True)
@@ -98,15 +102,15 @@ def process_administrator(email_vars, reports, start_date, end_date):
              f' - {end_date.strftime("%m/%d/%Y")}'
 
     content = {
-        'start_date': start_date,
-        'end_date': end_date,
+        START_DATE: start_date,
+        END_DATE: end_date,
         'reports': reports
     }
 
     message = create_message(content, 'administrator.html.jinja')
 
     response = send_email(email_vars, subject, message,
-                          email_vars['ADMIN_EMAIL'])
+                          email_vars[constants.ADMIN_EMAIL])
     if response:
         logger.error(response)
 
@@ -122,15 +126,15 @@ def process_misconducts(email_vars, misconducts, coaches, start_date,
     subject = f'Misconduct: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
     content = {
-        'start_date': start_date,
-        'end_date': end_date,
+        START_DATE: start_date,
+        END_DATE: end_date,
         'misconducts': misconducts
     }
 
     message = create_message(content, 'misconduct.html.jinja')
 
     response = send_email(email_vars, subject, message,
-                          email_vars['MISCONDUCTS_EMAIL'])
+                          email_vars[constants.MISCONDUCTS_EMAIL])
 
     if response:
         logger.error(response)
@@ -144,8 +148,8 @@ def process_assignor_reports(email_vars, reports, start_date, end_date,
 
     for report in reports:
         content = {
-            'start_date': start_date,
-            'end_date': end_date,
+            START_DATE: start_date,
+            END_DATE: end_date,
             'report': report
         }
 
@@ -177,23 +181,25 @@ def main():
     if rc:
         exit(rc)
 
-    assignr = Assignr(env_vars['CLIENT_ID'], env_vars['CLIENT_SECRET'],
-                      env_vars['CLIENT_SCOPE'], env_vars['BASE_URL'],
-                      env_vars['AUTH_URL'])
+    assignr = Assignr(env_vars[constants.CLIENT_ID],
+                      env_vars[constants.CLIENT_SECRET],
+                      env_vars[constants.CLIENT_SCOPE],
+                      env_vars[constants.BASE_URL],
+                      env_vars[constants.AUTH_URL])
 
-    coaches = get_coach_information(spreadsheet_vars['SPREADSHEET_ID'],
-                                    spreadsheet_vars['SPREADSHEET_RANGE'])
+    coaches = get_coach_information(spreadsheet_vars[constants.SPREADSHEET_ID],
+                                    spreadsheet_vars[constants.SPREADSHEET_RANGE])
     
     assignors = get_assignor_information()
 
-    reports = assignr.get_reports(args['start_date'],
-                                    args['end_date'])
+    reports = assignr.get_reports(args[START_DATE],
+                                    args[END_DATE])
     process_misconducts(email_vars, reports['misconducts'], coaches,
-                        args['start_date'], args['end_date'])
+                        args[START_DATE], args[END_DATE])
     process_administrator(email_vars, reports['admin_reports'],
-                        args['start_date'], args['end_date'])
+                        args[START_DATE], args[END_DATE])
     process_assignor_reports(email_vars, reports['assignor_reports'],
-                             args['start_date'], args['end_date'], assignors)
+                             args[START_DATE], args[END_DATE], assignors)
 
 if __name__ == "__main__":
     main()

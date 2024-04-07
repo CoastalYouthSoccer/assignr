@@ -87,11 +87,26 @@ class EMailClient():
         rc = 0
         logger.debug('Starting send email ...')
     
+        if subject is None:
+            logger.error("'subject' is required")
+            rc = 22
+
+        if message is None:
+            logger.error("'message' is required")
+            rc = 22
+
+        if send_to is None:
+            logger.error("'addressee' is required")
+            rc = 22
+
+        if rc:
+            return rc
+
         email = self.create_email(subject, message, send_to, html)
 
         if email is None:
             logger.error("Unable to create email")
-            rc = 33
+            return 33
 
         try:
             if self.smtp_port == 465:

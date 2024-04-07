@@ -7,25 +7,9 @@ import csv
 from google import auth
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from helpers import constants
 
 logger = logging.getLogger(__name__)
-
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
-ASSIGNOR_CSV_FILE = 'ASSIGNOR_CSV_FILE'
-CLIENT_SECRET = 'CLIENT_SECRET'
-CLIENT_ID = 'CLIENT_ID'
-CLIENT_SCOPE = 'CLIENT_SCOPE'
-AUTH_URL = 'AUTH_URL'
-BASE_URL = 'BASE_URL'
-SPREADSHEET_ID = 'SPREADSHEET_ID'
-SPREADSHEET_RANGE = 'SPREADSHEET_RANGE'
-GOOGLE_APPLICATION_CREDENTIALS = 'GOOGLE_APPLICATION_CREDENTIALS'
-EMAIL_SERVER = 'EMAIL_SERVER'
-EMAIL_PORT = 'EMAIL_PORT'
-EMAIL_USERNAME = 'EMAIL_USERNAME'
-EMAIL_PASSWORD = 'EMAIL_PASSWORD'
-ADMIN_EMAIL = 'ADMIN_EMAIL'
-MISCONDUCTS_EMAIL = 'MISCONDUCTS_EMAIL'
 
 def set_boolean_value(value):
     if value is None:
@@ -155,7 +139,7 @@ def get_assignor_information():
     results = {}
 
     try:
-        with open(environ[ASSIGNOR_CSV_FILE], 'r') as csv_file:
+        with open(environ[constants.ASSIGNOR_CSV_FILE], 'r') as csv_file:
             reader = csv.reader(csv_file)
             for row in reader:
                 if row[0] in results:
@@ -169,10 +153,10 @@ def get_assignor_information():
                         'email': f'<{row[2]} {row[1]}>{row[3]}'
                     }]
     except KeyError:
-        logger.error(f"{ASSIGNOR_CSV_FILE} environment variable not provided")
+        logger.error(f"{constants.ASSIGNOR_CSV_FILE} environment variable not provided")
         return results
     except FileNotFoundError:
-        logger.error(f"{environ[ASSIGNOR_CSV_FILE]} Not Found!")
+        logger.error(f"{environ[constants.ASSIGNOR_CSV_FILE]} Not Found!")
         return results
 
     return results
@@ -180,41 +164,41 @@ def get_assignor_information():
 def get_environment_vars():
     rc = 0
     env_vars = {
-        CLIENT_SECRET: None,
-        CLIENT_ID: None,
-        CLIENT_SCOPE: None,
-        AUTH_URL: None,
-        BASE_URL: None
+        constants.CLIENT_SECRET: None,
+        constants.CLIENT_ID: None,
+        constants.CLIENT_SCOPE: None,
+        constants.AUTH_URL: None,
+        constants.BASE_URL: None
     }
 
     try:
-        env_vars[CLIENT_SECRET] = environ[CLIENT_SECRET]
+        env_vars[constants.CLIENT_SECRET] = environ[constants.CLIENT_SECRET]
     except KeyError:
-        logger.error(f'{CLIENT_SECRET} environment variable is missing')
+        logger.error(f'{constants.CLIENT_SECRET} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[CLIENT_ID] = environ[CLIENT_ID]
+        env_vars[constants.CLIENT_ID] = environ[constants.CLIENT_ID]
     except KeyError:
-        logger.error(f'{CLIENT_ID} environment variable is missing')
+        logger.error(f'{constants.CLIENT_ID} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[CLIENT_SCOPE] = environ[CLIENT_SCOPE]
+        env_vars[constants.CLIENT_SCOPE] = environ[constants.CLIENT_SCOPE]
     except KeyError:
-        logger.error(f'{CLIENT_SCOPE} environment variable is missing')
+        logger.error(f'{constants.CLIENT_SCOPE} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[AUTH_URL] = environ[AUTH_URL]
+        env_vars[constants.AUTH_URL] = environ[constants.AUTH_URL]
     except KeyError:
-        logger.error(f'{AUTH_URL} environment variable is missing')
+        logger.error(f'{constants.AUTH_URL} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[BASE_URL] = environ[BASE_URL]
+        env_vars[constants.BASE_URL] = environ[constants.BASE_URL]
     except KeyError:
-        logger.error(f'{BASE_URL} environment variable is missing')
+        logger.error(f'{constants.BASE_URL} environment variable is missing')
         rc = 66
 
     return rc, env_vars
@@ -222,27 +206,28 @@ def get_environment_vars():
 def get_spreadsheet_vars():
     rc = 0
     env_vars = {
-        SPREADSHEET_ID: None,
-        SPREADSHEET_RANGE: None,
-        GOOGLE_APPLICATION_CREDENTIALS: None
+        constants.SPREADSHEET_ID: None,
+        constants.SPREADSHEET_RANGE: None,
+        constants.GOOGLE_APPLICATION_CREDENTIALS: None
     }
 
     try:
-        env_vars[GOOGLE_APPLICATION_CREDENTIALS] = environ[GOOGLE_APPLICATION_CREDENTIALS]
+        env_vars[constants.GOOGLE_APPLICATION_CREDENTIALS] = \
+            environ[constants.GOOGLE_APPLICATION_CREDENTIALS]
     except KeyError:
-        logger.error(f'{GOOGLE_APPLICATION_CREDENTIALS} environment variable is missing')
+        logger.error(f'{constants.GOOGLE_APPLICATION_CREDENTIALS} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[SPREADSHEET_ID] = environ[SPREADSHEET_ID]
+        env_vars[constants.SPREADSHEET_ID] = environ[constants.SPREADSHEET_ID]
     except KeyError:
-        logger.error(f'{SPREADSHEET_ID} environment variable is missing')
+        logger.error(f'{constants.SPREADSHEET_ID} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[SPREADSHEET_RANGE] = environ[SPREADSHEET_RANGE]
+        env_vars[constants.SPREADSHEET_RANGE] = environ[constants.SPREADSHEET_RANGE]
     except KeyError:
-        logger.error(f'{SPREADSHEET_RANGE} environment variable is missing')
+        logger.error(f'{constants.SPREADSHEET_RANGE} environment variable is missing')
         rc = 55
 
     return rc, env_vars
@@ -250,49 +235,49 @@ def get_spreadsheet_vars():
 def get_email_vars():
     rc = 0
     env_vars = {
-        EMAIL_SERVER: 'smtp.gmail.com',
-        EMAIL_PORT: 587,
-        EMAIL_USERNAME: None,
-        EMAIL_PASSWORD: None,
-        ADMIN_EMAIL: None,
-        MISCONDUCTS_EMAIL: None
+        constants.EMAIL_SERVER: 'smtp.gmail.com',
+        constants.EMAIL_PORT: 587,
+        constants.EMAIL_USERNAME: None,
+        constants.EMAIL_PASSWORD: None,
+        constants.ADMIN_EMAIL: None,
+        constants.MISCONDUCTS_EMAIL: None
     }
 
     try:
-        env_vars[EMAIL_SERVER] = environ[EMAIL_SERVER]
+        env_vars[constants.EMAIL_SERVER] = environ[constants.EMAIL_SERVER]
     except KeyError:
-        logger.info(f'{EMAIL_SERVER} environment variable is missing, defaulting to "smtp.gmail.com"')
+        logger.info(f'{constants.EMAIL_SERVER} environment variable is missing, defaulting to "smtp.gmail.com"')
 
     try:
-        env_vars[EMAIL_PORT] = int(environ[EMAIL_PORT])
+        env_vars[constants.EMAIL_PORT] = int(environ[constants.EMAIL_PORT])
     except KeyError:
-        logger.info(f'{EMAIL_PORT} environment variable is missing, defaulting to 587')
+        logger.info(f'{constants.EMAIL_PORT} environment variable is missing, defaulting to 587')
     except ValueError:
-        logger.error(f'{EMAIL_PORT} environment variable is not an integer')
+        logger.error(f'{constants.EMAIL_PORT} environment variable is not an integer')
         rc = 55
 
     try:
-        env_vars[EMAIL_USERNAME] = environ[EMAIL_USERNAME]
+        env_vars[constants.EMAIL_USERNAME] = environ[constants.EMAIL_USERNAME]
     except KeyError:
-        logger.error(f'{EMAIL_USERNAME} environment variable is missing')
+        logger.error(f'{constants.EMAIL_USERNAME} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[EMAIL_PASSWORD] = environ[EMAIL_PASSWORD]
+        env_vars[constants.EMAIL_PASSWORD] = environ[constants.EMAIL_PASSWORD]
     except KeyError:
-        logger.error(f'{EMAIL_PASSWORD} environment variable is missing')
+        logger.error(f'{constants.EMAIL_PASSWORD} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[ADMIN_EMAIL] = environ[ADMIN_EMAIL]
+        env_vars[constants.ADMIN_EMAIL] = environ[constants.ADMIN_EMAIL]
     except KeyError:
-        logger.error(f'{ADMIN_EMAIL} environment variable is missing')
+        logger.error(f'{constants.ADMIN_EMAIL} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[MISCONDUCTS_EMAIL] = environ[MISCONDUCTS_EMAIL]
+        env_vars[constants.MISCONDUCTS_EMAIL] = environ[constants.MISCONDUCTS_EMAIL]
     except KeyError:
-        logger.error(f'{MISCONDUCTS_EMAIL} environment variable is missing')
+        logger.error(f'{constants.MISCONDUCTS_EMAIL} environment variable is missing')
         rc = 55
 
     return rc, env_vars
