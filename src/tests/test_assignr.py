@@ -410,7 +410,8 @@ class TestAssignr(TestCase):
         temp.site_id = 100
         with self.assertLogs(level='INFO') as cm:
             result = temp.get_reports(CONST_DATE_2022_01_01,
-                                        CONST_DATE_2022_01_01)
+                                        CONST_DATE_2022_01_01,
+                                        None)
         self.assertEqual(cm.output, ["ERROR:root:Failed to get reports: 500"])
         self.assertEqual(result, {'misconducts': [], 'admin_reports': [],
                                   'assignor_reports': []})

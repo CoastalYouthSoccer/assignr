@@ -19,7 +19,7 @@ def get_match_count(data, match):
     pattern = re.compile(match)
 
     return sum(1 for key in data.keys() if pattern.match(key))
-
+ 
 def get_referees(payload):
     pattern = r'\.officials\.\d+\.position'
     found_cnt = get_match_count(payload, pattern)
@@ -211,7 +211,7 @@ class Assignr:
 
         return referee
 
-    def get_reports(self, start_dt, end_dt):
+    def get_reports(self, start_dt, end_dt, assignors):
         if not self.token:
             self.authenticate()
 
@@ -255,10 +255,13 @@ class Assignr:
                     data_dict['.author_name'] = item['author_name']
                     result = process_game_report(data_dict)
                     if result['admin_review']:
+
                         reports['admin_reports'].append(result)
                     if result['misconduct']:
+                        result['assignors'] = assignors[result['league']]
                         reports['misconducts'].append(result)
                     if result['assignments_correct'] == False:
+                        result['assignors'] = assignors[result['league']]
                         reports['assignor_reports'].append(result)
 
             except KeyError as ke:

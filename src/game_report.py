@@ -49,7 +49,6 @@ def get_arguments(args):
         elif opt in ("-e", "--end-date"):
             arguments[END_DATE] = arg
 
-
     try:
         if arguments[END_DATE]:
             arguments[END_DATE] = \
@@ -97,9 +96,13 @@ def get_coaches_name(coaches, game_data, team):
     except KeyError:
         return 'Unknown'
 
-def process_administrator(email_vars, reports, start_date, end_date):
+def process_administrator(email_vars, reports, start_date, end_date,
+                          assignor_emails):
     subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
+    temp_addresses = [email_vars[constants.ADMIN_EMAIL]]
+    temp_addresses.append(assignor_emails)
+    email_addresses = ','.join(assignor_emails) 
 
     content = {
         START_DATE: start_date,
@@ -110,14 +113,18 @@ def process_administrator(email_vars, reports, start_date, end_date):
     message = create_message(content, 'administrator.html.jinja')
 
     response = send_email(email_vars, subject, message,
-                          email_vars[constants.ADMIN_EMAIL])
+                          email_addresses)
     if response:
         logger.error(response)
 
     logger.info("Completed Administrator Report")
 
 def process_misconducts(email_vars, misconducts, coaches, start_date,
-                        end_date):
+                        end_date, assignor_emails):
+    temp_emails = [email_vars[constants.MISCONDUCTS_EMAIL]]
+    temp_emails.append(assignor_emails)
+    email_addresses = ",".join(assignor_emails)
+
 # Update misconducts with coach's names
     for misconduct in misconducts:
         misconduct['home_coach'] = get_coaches_name(coaches, misconduct, 'home_team')
@@ -134,7 +141,7 @@ def process_misconducts(email_vars, misconducts, coaches, start_date,
     message = create_message(content, 'misconduct.html.jinja')
 
     response = send_email(email_vars, subject, message,
-                          email_vars[constants.MISCONDUCTS_EMAIL])
+                          email_addresses)
 
     if response:
         logger.error(response)
@@ -142,7 +149,7 @@ def process_misconducts(email_vars, misconducts, coaches, start_date,
     logger.info("Completed Misconduct Report")
 
 def process_assignor_reports(email_vars, reports, start_date, end_date,
-                                assignors):
+                             assignors):
     subject = f'Game Reports Needing Attention: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
 
@@ -155,8 +162,13 @@ def process_assignor_reports(email_vars, reports, start_date, end_date,
 
         message = create_message(content, 'assignor.html.jinja')
 
+        temp_emails = []
+        for assignor in assignors[report['league']]:
+            temp_emails.append(assignor['email'])
+        assignor_emails = ','.join(temp_emails)
+
         response = send_email(email_vars, subject, message,
-                              assignors[report['league']][0]['email'])
+                              assignor_emails)
     
         if response:
             logger.error(response)
@@ -191,15 +203,23 @@ def main():
                                     spreadsheet_vars[constants.SPREADSHEET_RANGE])
     
     assignors = get_assignor_information()
+    assignor_emails = []
+    for association in assignors:
+        for assignor in assignors[association]:
+            assignor_emails.append(assignor['email'])
 
     reports = assignr.get_reports(args[START_DATE],
-                                    args[END_DATE])
+                                    args[END_DATE],
+                                    assignors)
     process_misconducts(email_vars, reports['misconducts'], coaches,
-                        args[START_DATE], args[END_DATE])
+                        args[START_DATE], args[END_DATE],
+                        assignor_emails)
     process_administrator(email_vars, reports['admin_reports'],
-                        args[START_DATE], args[END_DATE])
+                        args[START_DATE], args[END_DATE],
+                        assignor_emails)
     process_assignor_reports(email_vars, reports['assignor_reports'],
-                             args[START_DATE], args[END_DATE], assignors)
+                             args[START_DATE], args[END_DATE],
+                             assignors)
 
 if __name__ == "__main__":
     main()
