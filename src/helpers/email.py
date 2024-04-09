@@ -44,30 +44,8 @@ class EMailClient():
         self.sender_name = sender_name
         self.password = password
         self.smtp_port = smtp_port
-        self.template_dir = path.join(
-            path.dirname(path.realpath(__file__)),
-            "templates/")                
 
-    def create_message(self, content, template_name):
-        logger.debug('Starting create message ...')
-        message = None
-        jinja_env = Environment(
-            autoescape=True,
-            loader=FileSystemLoader(self.template_dir))
-        jinja_env.filters['format_mm_dd_yyyy'] = format_date_mm_dd_yyyy
-        jinja_env.filters['format_hh_mm'] = format_date_hh_mm
-        try:
-            template = jinja_env.get_template(template_name)
-            message = template.render(content)
-        except TemplateNotFound as tf:
-            logger.error(f"Missing File: {tf}")
-
-        except Exception as e:
-            logger.error(f"Error: {e}")
-        logger.debug('Completed create message ...')
-        return message
-
-    def create_email(self, content, template_name, send_to, html=True):
+    def create_email(self, subject, message, send_to, html=True):
         logger.debug('Starting create email ...')
 
         addr_component = self.sender_email.split('@')
@@ -94,9 +72,7 @@ class EMailClient():
                                   addr_components['domain']
                                  )
 
-        email["Subject"] = content['subject']
-
-        message = self.create_message(content['content'], template_name)
+        email["Subject"] = subject
 
         if html:
             email.set_content(message, subtype="html")
@@ -106,26 +82,31 @@ class EMailClient():
         logger.debug('Completed create email ...')
         return email
 
-    def send_email(self, content, template_name, send_to,
+    def send_email(self, subject, message, send_to,
                    html=False) -> int:
         rc = 0
         logger.debug('Starting send email ...')
     
-        if "content" not in content:
-            logger.error("'content' is required")
-            rc = 33
-        if "subject" not in content:
+        if subject is None:
             logger.error("'subject' is required")
-            rc = 33
-        if rc != 0:
+            rc = 22
+
+        if message is None:
+            logger.error("'message' is required")
+            rc = 22
+
+        if send_to is None:
+            logger.error("'addressee' is required")
+            rc = 22
+
+        if rc:
             return rc
 
-        email = self.create_email(content, template_name, send_to,
-                                  html)
+        email = self.create_email(subject, message, send_to, html)
 
         if email is None:
             logger.error("Unable to create email")
-            rc = 33
+            return 33
 
         try:
             if self.smtp_port == 465:

@@ -40,7 +40,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements-misconduct.txt
+        pip install -r requirements-game-report.txt
         pip install -r test_requirements.txt
 
     - name: Test with pytest
@@ -78,4 +78,4 @@ jobs:
 
     - name: Run Install Process
       run: |
-        ssh github@${{vars.DEPLOY_HOST}} "sudo ${{ secrets.SCRIPT_DIR }}/update_misconduct.sh ${GITHUB_SHA}"
+        ssh github@${{vars.DEPLOY_HOST}} "sudo ${{ secrets.SCRIPT_DIR }}/update_game_report.sh ${GITHUB_SHA}"
