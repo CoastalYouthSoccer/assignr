@@ -176,7 +176,7 @@ def process_assignor_reports(email_vars, reports, start_date, end_date,
     logger.info("Completed Assignors Report")
 
 def main():
-    logger.info("Starting Misconduct Report")
+    logger.info("Starting Game Report")
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
@@ -220,6 +220,7 @@ def main():
     process_assignor_reports(email_vars, reports['assignor_reports'],
                              args[START_DATE], args[END_DATE],
                              assignors)
+    logger.info("Completes Game Report")
 
 if __name__ == "__main__":
     main()
