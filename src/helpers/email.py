@@ -23,16 +23,19 @@ def get_email_components(email):
         return email_components
 
     email_components['name'] = email[start_index:end_index]
-    if '@' in email:
-        components = email[end_index+1:].split('@')
-        email_components['address'] = components[0]
-        if '.' in components[1]:
-            email_components['domain'] = components[1]
+
+    try:
+        if '@' in email:
+            components = email[end_index+1:].split('@')
+            email_components['address'] = components[0]
+            if '.' in components[1]:
+                email_components['domain'] = components[1]
+            else:
+                logger.error(f"Invalid email address: {email}.")
         else:
             logger.error(f"Invalid email address: {email}.")
-    else:
-        logger.error(f"Invalid email address: {email}.")
-
+    except IndexError as ie:
+        logger.error(f"Unable to process {email}: {ie}")
     return email_components
 
 class EMailClient():

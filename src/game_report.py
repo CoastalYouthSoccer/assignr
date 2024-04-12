@@ -101,7 +101,7 @@ def process_administrator(email_vars, reports, start_date, end_date,
     subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
     temp_addresses = [email_vars[constants.ADMIN_EMAIL]]
-    temp_addresses.append(assignor_emails)
+    temp_addresses.extend(assignor_emails)
     email_addresses = ','.join(temp_addresses) 
 
     content = {
@@ -122,7 +122,7 @@ def process_administrator(email_vars, reports, start_date, end_date,
 def process_misconducts(email_vars, misconducts, coaches, start_date,
                         end_date, assignor_emails):
     temp_emails = [email_vars[constants.MISCONDUCTS_EMAIL]]
-    temp_emails.append(assignor_emails)
+    temp_emails.extend(assignor_emails)
     email_addresses = ",".join(temp_emails)
 
 # Update misconducts with coach's names
