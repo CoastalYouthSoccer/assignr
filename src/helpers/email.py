@@ -3,15 +3,12 @@ import logging
 from email.message import EmailMessage
 from email.headerregistry import Address
 import smtplib, ssl
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
-from helpers.helpers import format_date_mm_dd_yyyy, format_date_hh_mm
 
 logger = logging.getLogger(__name__)
 
 def get_email_components(email):
     email_components = {
         'name': None,
-        'domain': None,
         'address': None
     }
 
@@ -26,12 +23,7 @@ def get_email_components(email):
 
     try:
         if '@' in email:
-            components = email[end_index+1:].split('@')
-            email_components['address'] = components[0]
-            if '.' in components[1]:
-                email_components['domain'] = components[1]
-            else:
-                logger.error(f"Invalid email address: {email}.")
+            email_components['address'] = email[end_index+1:]
         else:
             logger.error(f"Invalid email address: {email}.")
     except IndexError as ie:
@@ -51,28 +43,24 @@ class EMailClient():
     def create_email(self, subject, message, send_to, html=True):
         logger.debug('Starting create email ...')
 
-        addr_component = self.sender_email.split('@')
-
         email = EmailMessage()
-        email["From"] = Address(self.sender_name,
-                                addr_component[0],
-                                addr_component[1]
+        email["From"] = Address(display_name=self.sender_name,
+                                addr_spec=self.sender_email
                                )
 
         if ',' in send_to:
             addresses = []
             for recipient in send_to.split(","):
                 addr_components = get_email_components(recipient)
-                addresses.append(Address(addr_components['name'],
-                                      addr_components['address'],
-                                      addr_components['domain']
-                                     ))
+                addresses.append(
+                    Address(display_name=addr_components['name'],
+                            addr_spec=addr_components['address']
+                            ))
             email["To"] = addresses
         else:
             addr_components = get_email_components(send_to)
-            email["To"] = Address(addr_components['name'],
-                                  addr_components['address'],
-                                  addr_components['domain']
+            email["To"] = Address(display_name=addr_components['name'],
+                                  addr_spec=addr_components['address']
                                  )
 
         email["Subject"] = subject
