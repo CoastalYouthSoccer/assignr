@@ -101,8 +101,8 @@ def process_administrator(email_vars, reports, start_date, end_date,
     subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
     temp_addresses = [email_vars[constants.ADMIN_EMAIL]]
-    temp_addresses.append(assignor_emails)
-    email_addresses = ','.join(assignor_emails) 
+    temp_addresses.extend(assignor_emails)
+    email_addresses = ','.join(temp_addresses) 
 
     content = {
         START_DATE: start_date,
@@ -122,8 +122,8 @@ def process_administrator(email_vars, reports, start_date, end_date,
 def process_misconducts(email_vars, misconducts, coaches, start_date,
                         end_date, assignor_emails):
     temp_emails = [email_vars[constants.MISCONDUCTS_EMAIL]]
-    temp_emails.append(assignor_emails)
-    email_addresses = ",".join(assignor_emails)
+    temp_emails.extend(assignor_emails)
+    email_addresses = ",".join(temp_emails)
 
 # Update misconducts with coach's names
     for misconduct in misconducts:
@@ -176,7 +176,7 @@ def process_assignor_reports(email_vars, reports, start_date, end_date,
     logger.info("Completed Assignors Report")
 
 def main():
-    logger.info("Starting Misconduct Report")
+    logger.info("Starting Game Report")
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
@@ -220,6 +220,7 @@ def main():
     process_assignor_reports(email_vars, reports['assignor_reports'],
                              args[START_DATE], args[END_DATE],
                              assignors)
+    logger.info("Completes Game Report")
 
 if __name__ == "__main__":
     main()
