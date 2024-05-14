@@ -20,7 +20,9 @@ load_dotenv(env_file)
 
 log_level = environ.get('LOG_LEVEL', logging.INFO)
 logging.basicConfig(stream=stdout,
-                    level=int(log_level))
+                    format='%(asctime)s %(levelname)s %(message)s',
+                    level=int(log_level),
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
 

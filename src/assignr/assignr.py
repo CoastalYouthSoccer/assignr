@@ -13,7 +13,7 @@ SEARCH_END_DT = "search[end_date]"
 ADMIN_REVIEW = ".adminReview"
 ADMIN_NARRATIVE = ".adminNarrative"
 CREW_CHANGES = ".crewChanges"
-NARRATIVE = ".narrative"
+NARRATIVE = ".description"
 
 def get_match_count(data, match):
     pattern = re.compile(match)
@@ -87,6 +87,10 @@ def process_game_report(data):
         data[CREW_CHANGES] = None
 
     try:
+        if NARRATIVE in data:
+            narrative = data[NARRATIVE]
+        else:
+            narrative = None
         result = {
             "admin_review": set_boolean_value(data[ADMIN_REVIEW]),
             "misconduct": set_boolean_value(data['.misconductCheckbox']),
@@ -105,7 +109,7 @@ def process_game_report(data):
             'misconducts': get_misconducts(data),
             'home_coach': 'Unknown',
             'away_coach': 'Unknown',
-            'narrative': data[NARRATIVE],
+            'narrative': narrative,
             'ejections': set_boolean_value(data['.ejections']),
             'admin_narrative': data[ADMIN_NARRATIVE],
             'crewChanges': data[CREW_CHANGES]
@@ -237,7 +241,7 @@ class Assignr:
                 SEARCH_START_DT: start_dt,
                 SEARCH_END_DT: end_dt
             }
-            status_code, response = self.get_requests('form/templates/108/submissions',
+            status_code, response = self.get_requests('form/templates/1002/submissions',
                                                       params=params)    
             if status_code != 200:
                 logging.error(f'Failed to get reports: {status_code}')
