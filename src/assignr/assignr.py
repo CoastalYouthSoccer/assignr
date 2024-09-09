@@ -15,6 +15,12 @@ ADMIN_NARRATIVE = ".adminNarrative"
 CREW_CHANGES = ".crewChanges"
 NARRATIVE = ".description"
 
+def get_coaches_name(coaches, age_group, gender, team):
+    try:
+        return coaches[age_group][gender][team]
+    except KeyError:
+        return 'Unknown'
+
 def get_match_count(data, match):
     pattern = re.compile(match)
 
@@ -215,7 +221,7 @@ class Assignr:
 
         return referee
 
-    def get_reports(self, start_dt, end_dt, assignors):
+    def get_reports(self, start_dt, end_dt, assignors, coaches):
         if not self.token:
             self.authenticate()
 
@@ -258,8 +264,11 @@ class Assignr:
                     data_dict[START_TIME] = datetime.fromisoformat(data_dict[START_TIME])
                     data_dict['.author_name'] = item['author_name']
                     result = process_game_report(data_dict)
+                    result['home_coach'] = get_coaches_name(coaches, result['age_group'], \
+                                                            result['gender'], result['home_team'])
+                    result['away_coach'] = get_coaches_name(coaches, result['age_group'], \
+                                                            result['gender'], result['away_team'])
                     if result['admin_review']:
-
                         reports['admin_reports'].append(result)
                     if result['misconduct']:
                         result['assignors'] = assignors[result['league']]

@@ -64,8 +64,7 @@ class TestEmailHelpers(TestCase):
     def test_valid_email_components(self):
         expected_result = {
             'name': CONST_TEST_USER,
-            'address': 'test',
-            'domain': 'example.org'
+            'address': 'test@example.org'
         }
         result = get_email_components("<test user>test@example.org")
         self.assertEqual(result, expected_result)
@@ -73,8 +72,7 @@ class TestEmailHelpers(TestCase):
     def test_invalid_email_name(self):
         expected_result = {
             'name': None,
-            'address': None,
-            'domain': None
+            'address': None
         }
         with self.assertLogs(level='DEBUG') as cm:
             result = get_email_components("test usertest@example.org")
@@ -86,8 +84,7 @@ class TestEmailHelpers(TestCase):
     def test_invalid_email_address_missing_at(self):
         expected_result = {
             'name': CONST_TEST_USER,
-            'address': None,
-            'domain': None
+            'address': None
         }
         with self.assertLogs(level='DEBUG') as cm:
             result = get_email_components("<test user>testexample.org")
@@ -99,8 +96,7 @@ class TestEmailHelpers(TestCase):
     def test_invalid_email_address_missing_dot(self):
         expected_result = {
             'name': CONST_TEST_USER,
-            'address': 'test',
-            'domain': None
+            'address': 'test@example'
         }
         with self.assertLogs(level='DEBUG') as cm:
             result = get_email_components("<test user>test@example")
