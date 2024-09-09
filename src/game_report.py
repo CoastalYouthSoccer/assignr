@@ -92,12 +92,6 @@ def send_email(email_vars, subject, message, send_to):
     return email_client.send_email(subject, message,
                                    send_to, True)
 
-def get_coaches_name(coaches, game_data, team):
-    try:
-        return coaches[game_data['age_group']][game_data['gender']][game_data[team]]
-    except KeyError:
-        return 'Unknown'
-
 def process_administrator(email_vars, reports, start_date, end_date,
                           assignor_emails):
     subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
@@ -121,16 +115,11 @@ def process_administrator(email_vars, reports, start_date, end_date,
 
     logger.info("Completed Administrator Report")
 
-def process_misconducts(email_vars, misconducts, coaches, start_date,
+def process_misconducts(email_vars, misconducts, start_date,
                         end_date, assignor_emails):
     temp_emails = [email_vars[constants.MISCONDUCTS_EMAIL]]
     temp_emails.extend(assignor_emails)
     email_addresses = ",".join(temp_emails)
-
-# Update misconducts with coach's names
-    for misconduct in misconducts:
-        misconduct['home_coach'] = get_coaches_name(coaches, misconduct, 'home_team')
-        misconduct['away_coach'] = get_coaches_name(coaches, misconduct, 'away_team')
 
     subject = f'Misconduct: {start_date.strftime("%m/%d/%Y")}' \
              f' - {end_date.strftime("%m/%d/%Y")}'
@@ -212,8 +201,9 @@ def main():
 
     reports = assignr.get_reports(args[START_DATE],
                                     args[END_DATE],
-                                    assignors)
-    process_misconducts(email_vars, reports['misconducts'], coaches,
+                                    assignors,
+                                    coaches)
+    process_misconducts(email_vars, reports['misconducts'],
                         args[START_DATE], args[END_DATE],
                         assignor_emails)
     process_administrator(email_vars, reports['admin_reports'],

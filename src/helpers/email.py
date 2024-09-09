@@ -26,6 +26,8 @@ def get_email_components(email):
             email_components['address'] = email[end_index+1:]
         else:
             logger.error(f"Invalid email address: {email}.")
+        if '.' not in email:
+            logger.error(f"Invalid email address: {email}.")
     except IndexError as ie:
         logger.error(f"Unable to process {email}: {ie}")
     return email_components
