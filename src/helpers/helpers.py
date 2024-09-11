@@ -144,13 +144,11 @@ def get_assignor_information():
             for row in reader:
                 if row[0] in results:
                     results[row[0]].append({
-                        'name': f'{row[2]} {row[1]}',
-                        'email': f'<{row[2]} {row[1]}>{row[3]}'
+                        'email': f'{row[2]} {row[1]}<{row[3]}>'
                     })
                 else:
                     results[row[0]] = [{
-                        'name': f'{row[2]} {row[1]}',
-                        'email': f'<{row[2]} {row[1]}>{row[3]}'
+                        'email': f'{row[2]} {row[1]}<{row[3]}>'
                     }]
     except KeyError:
         logger.error(f"{constants.ASSIGNOR_CSV_FILE} environment variable not provided")

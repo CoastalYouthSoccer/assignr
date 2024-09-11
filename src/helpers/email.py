@@ -6,31 +6,16 @@ import smtplib, ssl
 
 logger = logging.getLogger(__name__)
 
-def get_email_components(email):
-    email_components = {
-        'name': None,
-        'address': None
-    }
-
-    start_index = email.find('<') + 1
-    end_index = email.find('>')
-    if start_index == 0 or end_index == -1:
-        logger.error(f"Could not determine name for {email}.")
-# No point continuing, as the address is not in the correct format.
-        return email_components
-
-    email_components['name'] = email[start_index:end_index]
-
-    try:
-        if '@' in email:
-            email_components['address'] = email[end_index+1:]
-        else:
-            logger.error(f"Invalid email address: {email}.")
-        if '.' not in email:
-            logger.error(f"Invalid email address: {email}.")
-    except IndexError as ie:
-        logger.error(f"Unable to process {email}: {ie}")
-    return email_components
+def get_email_components(email_address):
+    # Assuming email_address is a string with name <email@domain.com> format
+    if '<' in email_address and '>' in email_address:
+        name, address = email_address.split('<')
+        name = name.strip()
+        address = address.rstrip('>')
+    else:
+        name = ''
+        address = email_address
+    return {'name': name, 'address': address}
 
 class EMailClient():
     def __init__(self, smtp_server, smtp_port, sender_email,
@@ -51,26 +36,24 @@ class EMailClient():
                                )
 
         if ',' in send_to:
-            addresses = []
+            recipients = []
             for recipient in send_to.split(","):
-                addr_components = get_email_components(recipient)
-                addresses.append(
+                addr_components = get_email_components(recipient.strip())
+                recipients.append(
                     Address(display_name=addr_components['name'],
                             addr_spec=addr_components['address']
                             ))
-            email["To"] = addresses
+            email["To"] = recipients  # Set the list directly to the 'To' field
         else:
-            addr_components = get_email_components(send_to)
-            email["To"] = Address(display_name=addr_components['name'],
-                                  addr_spec=addr_components['address']
-                                 )
+            addr_components = get_email_components(send_to.strip())
+            email["To"] = [Address(display_name=addr_components['name'],
+                                   addr_spec=addr_components['address']
+                                  )]
 
         email["Subject"] = subject
-
+        email.set_content(message)
         if html:
-            email.set_content(message, subtype="html")
-        else:
-            email.set_content(message)
+            email.add_alternative(message, subtype="html")
 
         logger.debug('Completed create email ...')
         return email
@@ -109,8 +92,9 @@ class EMailClient():
                 server.starttls(context=self.context)
 
             server.login(self.sender_email, self.password)
-            server.sendmail(self.sender_email, self.sender_email,
-                            email.as_string())
+            server.send_message(email)
+#            server.sendmail(self.sender_email, self.sender_email,
+#                            email.as_string())
             logger.debug('Completed send email ...')
 
         except smtplib.SMTPAuthenticationError as se:

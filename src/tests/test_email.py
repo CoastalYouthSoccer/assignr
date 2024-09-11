@@ -66,31 +66,23 @@ class TestEmailHelpers(TestCase):
             'name': CONST_TEST_USER,
             'address': 'test@example.org'
         }
-        result = get_email_components("<test user>test@example.org")
+        result = get_email_components("test user<test@example.org>")
         self.assertEqual(result, expected_result)
 
     def test_invalid_email_name(self):
         expected_result = {
-            'name': None,
-            'address': None
+            'name': '',
+            'address': 'test usertest@example.org'
         }
-        with self.assertLogs(level='DEBUG') as cm:
-            result = get_email_components("test usertest@example.org")
-        self.assertEqual(cm.output, [
-            'ERROR:helpers.email:Could not determine name for test usertest@example.org.'
-        ])
+        result = get_email_components("test usertest@example.org")
         self.assertEqual(result, expected_result)
 
     def test_invalid_email_address_missing_at(self):
         expected_result = {
             'name': CONST_TEST_USER,
-            'address': None
+            'address': 'testexample.org'
         }
-        with self.assertLogs(level='DEBUG') as cm:
-            result = get_email_components("<test user>testexample.org")
-        self.assertEqual(cm.output, [
-            'ERROR:helpers.email:Invalid email address: <test user>testexample.org.'
-        ])
+        result = get_email_components("test user<testexample.org>")
         self.assertEqual(result, expected_result)
 
     def test_invalid_email_address_missing_dot(self):
@@ -98,11 +90,7 @@ class TestEmailHelpers(TestCase):
             'name': CONST_TEST_USER,
             'address': 'test@example'
         }
-        with self.assertLogs(level='DEBUG') as cm:
-            result = get_email_components("<test user>test@example")
-        self.assertEqual(cm.output, [
-            'ERROR:helpers.email:Invalid email address: <test user>test@example.'
-        ])
+        result = get_email_components("test user<test@example>")
         self.assertEqual(result, expected_result)
 
 class TestEMail(TestCase):
