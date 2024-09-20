@@ -1,0 +1,27 @@
+Hi Referee,
+{%- if game_report_url is none -%}
+<p>You need to complete a game report for the following game:</p>
+<h2>Game Information</h2>
+<table>
+  <tr>
+    <td><b>Date/Time:</b></td>
+    <td>{{ game_dt | format_mm_dd_yyyy }} @ {{ game_dt | format_hh_mm }}</td>
+  </tr>
+  <tr>
+    <td><b>Age Group/Gender:</b></td>
+    <td>{{ age_group }} / {{ gender }}</td>
+  </tr>
+  <tr>
+    <td><b>Venue:</b></td>
+    <td>{{ venue }} - {{ sub_venue }}</td>
+  </tr>
+</table> 
+{%- endif -%}
+
+{%- if not home_roster -%}
+<p>Please upload the missing home roster for <a href="{{ game_report_url}}">Game Report</a>.</p>
+{%- endif -%}
+
+{%- if not away_roster -%}
+<p>Please upload the missing away roster for <a href="{{ game_report_url}}">Game Report</a>.</p>
+{%- endif -%}

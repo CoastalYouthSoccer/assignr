@@ -197,11 +197,39 @@ class Assignr:
             })
         return referees
 
+    def get_center_referee_game(self, payload):
+        referee = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        try:
+            for official in payload:
+                if official['position'] == 'Referee':
+                    referee_id = official['_embedded']['official']['id']
+                    referee_info = self.get_referee_information(f"/users/{referee_id}")
+                    referee['first_name'] = referee_info['first_name']
+                    referee['last_name'] = referee_info['last_name']
+                    referee['email_addresses'] = referee_info['email_addresses']
+        except KeyError as ke:
+            logging.error(f"Key: {ke}, missing from Get Referee response")
+            
+        return referee
+    
     def get_referee_information(self, endpoint):
         if not self.token:
             self.authenticate()
 
-        referee = {}
+        referee = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': [],
+            'official': None,
+            'assignor': None,
+            'manager': None,
+            'active': None          
+        }
 
         status_code, response = self.get_requests(endpoint)
 
@@ -323,6 +351,115 @@ class Assignr:
 
         return availability
 
+    def match_games_to_reports(self, start_dt, end_dt, games):
+        if not self.token:
+            self.authenticate()
+
+        page_nbr = 1
+        more_rows = True
+
+        if self.site_id is None:
+            self.get_site_id()
+
+        while more_rows:
+            params = {
+                'page': page_nbr,
+                SEARCH_START_DT: start_dt,
+                SEARCH_END_DT: end_dt
+            }
+            status_code, response = self.get_requests('form/templates/1002/submissions',
+                                                      params=params)    
+            if status_code != 200:
+                logging.error(f'Failed to get game reports: {status_code}')
+                more_rows = False
+                return games
+
+            try:
+                total_pages = response['page']['pages']
+                for item in response['_embedded']['form_submissions']:
+                    for data in item['_embedded']['values']:
+                        game_id = item["_embedded"]['game']['id']
+                        game_report_url = item['_links']['game_report_webview']['href']
+                        if game_id in games:
+                            away_roster = True if ".uploadAwayTeamRoster.0.url" in data["key"] and \
+                                data["value"] is not None else False
+                            home_roster = True if ".uploadHomeTeamRoster.0.url" in data["key"] and \
+                                data["value"] is not None else False
+                            games[game_id]['game_report_url'] = game_report_url
+                            games[game_id]['home_roster'] = home_roster
+                            games[game_id]['away_roster'] = away_roster
+
+            except KeyError as ke:
+                logging.error(f"Key: {ke}, missing from Game Report response")
+
+            page_nbr += 1
+            if page_nbr > total_pages:
+                more_rows = False
+
+        return games
+    
+    def get_game_ids(self, start_dt, end_dt, game_type="Coastal"):
+        results = {}
+        if not self.token:
+            self.authenticate()
+
+        page_nbr = 1
+        more_rows = True
+
+        if self.site_id is None:
+            self.get_site_id()
+
+        params = {
+            SEARCH_START_DT: format_date_yyyy_mm_dd(start_dt),
+            SEARCH_END_DT: format_date_yyyy_mm_dd(end_dt),
+            'page': page_nbr,
+            'limit': 50
+        }
+
+        while more_rows:
+            status_code, response = self.get_requests(f'sites/{self.site_id}/games',
+                                                      params=params)
+            if status_code != 200:
+                logging.error(f'Failed to get reports: {status_code}')
+                more_rows = False
+                return results
+
+            try:
+                total_pages = response['page']['pages']
+                for item in response['_embedded']['games']:
+                    if item['game_type'] == game_type:
+                        sub_item = item["_embedded"]
+                        assignor = f'{sub_item["assignor"]["first_name"]}' \
+                            f' {sub_item["assignor"]["last_name"]}'
+                        referee = self.get_center_referee_game(sub_item['assignments'])
+                        sub_venue = item["subvenue"] if "subvenue" in item else None
+                        results[item['id']] = {
+                            'game_report_url': None,
+                            'home_roster': False,
+                            'away_roster': False,
+                            'referee': referee,
+                            'game_date': item["localized_date"],
+                            'game_time': item["localized_time"],
+                            'home_team': item["home_team"],
+                            'away_team': item["away_team"],
+                            'venue': sub_item["venue"]["name"],
+                            'sub_venue': sub_venue,
+                            'game_type': item["game_type"],
+                            'age_group': item["age_group"],
+                            'gender': item["gender"],
+                            'assignor': assignor
+                        }
+
+            except KeyError as ke:
+                logging.error(f"Key: {ke}, missing from Game Report response")
+
+            page_nbr += 1
+            params['page'] = page_nbr
+            if page_nbr > total_pages:
+                more_rows = False
+
+        return results
+
     def get_league_games(self, league, start_dt, end_dt):
         results = []
 
@@ -348,6 +485,7 @@ class Assignr:
                     assignor = f'{sub_item["assignor"]["first_name"]}' \
                         f' {sub_item["assignor"]["last_name"]}'
                     referees = self.get_referees_by_assignments(sub_item['assignments'])
+                    sub_venue = item["subvenue"] if "subvenue" in item else None
                     results.append({
                         'officials': referees,
                         'game_date': item["localized_date"],
@@ -355,7 +493,7 @@ class Assignr:
                         'home_team': item["home_team"],
                         'away_team': item["away_team"],
                         'venue': sub_item["venue"]["name"],
-                        'sub_venue': item["subvenue"],
+                        'sub_venue': sub_venue,
                         'game_type': item["game_type"],
                         'age_group': item["age_group"],
                         'gender': item["gender"],
