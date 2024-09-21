@@ -2,7 +2,8 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
 from assignr.assignr import (Assignr, get_game_information, get_referees,
-                             get_match_count, get_misconducts)
+                             get_match_count, get_misconducts,
+                             get_coaches_name)
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
@@ -227,8 +228,41 @@ class TestAssignr(TestCase):
         result = temp.get_referee_information('referee')
         self.assertEqual(result, expected_result)
 
+    def test_get_valid_coach_name(self):
+        coaches = {
+            'Grade 7/8': {
+                'Boys': {
+                    'Isotopes': 'Mr. Burns',
+                    'Springfield': 'Homer Simpson'
+                }
+            }
+        }
+        result = get_coaches_name(coaches, 'Grade 7/8', 'Boys', 'Springfield')
+        self.assertEqual(result, 'Homer Simpson')
+
+    def test_get_invalid_coach_name(self):
+        coaches = {
+            'Grade 7/8': {
+                'Boys': {
+                    'Isotopes': 'Mr. Burns',
+                    'Springfield': 'Homer Simpson'
+                }
+            }
+        }
+        result = get_coaches_name(coaches, 'Grade 7/8', 'Girls', 'Springfield')
+        self.assertEqual(result, 'Unknown')
+
     @patch(ASSIGNR_REQUESTS)
     def test_invalid_referee_information(self, mock_requests):
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': [],
+            'official': None,
+            'assignor': None,
+            'manager': None,
+            'active': None
+        }
         mock_requests.post.return_value = mock_auth_response
 
         mock_response = MagicMock()
@@ -242,7 +276,7 @@ class TestAssignr(TestCase):
         with self.assertLogs(level='INFO') as cm:
             result = temp.get_referee_information('referee')
         self.assertEqual(cm.output, ["ERROR:root:Failed to get referee information: 500"])
-        self.assertEqual(result, {})
+        self.assertEqual(result, expected_result)
 
     def test_get_referees_by_availability(self):
         expected_result = [
@@ -573,6 +607,294 @@ class TestAssignr(TestCase):
         self.assertEqual(cm.output, 
             ["ERROR:assignr.assignr:Key: 'all_day', missing from Availability response"])
         self.assertEqual(result, [])
+
+    @patch(ASSIGNR_REQUESTS)
+    def test_valid_get_referee_information(self, mock_requests):
+        mock_requests.post.return_value = mock_auth_response
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": 123,
+            "last_name": "Simpson",
+            "first_name": "Homer",
+            "city": "Springfield",
+            "state": "MA",
+            "postal_code": "02025",
+            "official": True,
+            "assignor": False,
+            "manager": False,
+            "active": True,
+            "email_addresses": ["hsimpson@springfield.com"]
+        }
+        mock_requests.get.return_value = mock_response
+
+        expected_result = {
+            'first_name': 'Homer',
+            'last_name': 'Simpson',
+            'email_addresses': ['hsimpson@springfield.com']
+        }
+        payload = [
+            {
+                "position": "Referee",
+                "position_abbreviation": "R",
+                "_embedded": {
+                    "official": {
+                        "id": 123,
+                        "last_name": "Simpson",
+                        "first_name": "Homer"
+                    }
+                }
+            },
+            {
+                "position": "Asst. Referee",
+                "position_abbreviation": "AR",
+                "_embedded": {
+                    "official": {
+                        "id": 1234,
+                        "last_name": "Simpson",
+                        "first_name": "Marge"
+                    }
+                }
+            },
+            {
+                "position": "Asst. Referee",
+                "position_abbreviation": "AR",
+                "_embedded": {
+                    "official": {
+                        "id": 4321,
+                        "last_name": "Simpson",
+                        "first_name": "Bart"
+                    }
+                }
+            }
+        ]
+
+
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        result = temp.get_center_referee_game(payload)
+        self.assertEqual(result, expected_result)
+
+#    @patch(ASSIGNR_REQUESTS)
+#    def test_get_game_ids(self, mock_requests):
+#        mock_requests.post.return_value = mock_auth_response
+#
+#        mock_response = MagicMock()
+#        mock_response.status_code = 200
+#        mock_response.json.return_value = {
+#            "page": {
+#                "records": 357,
+#                "pages": 8,
+#                "current_page": 1,
+#                "next_page": 2,
+#                "limit": 50
+#            },
+#            "_embedded": {
+#                "games": [
+#                    {
+#                        "id": 1,
+#                        "game_type": "Coastal",
+#                        "gender": "Boys",
+#                        "localized_date": "Sep 3 2024",
+#                        "localized_time": "6:00 PM",
+#                        "age_group": "Grade 7/8",
+#                        "home_team": "Springfield",
+#                        "away_team": "Isotopes",
+#                        "_embedded": {
+#                            "venue": {
+#                                "name": "Springfield Elementary"
+#                            },
+#                            "assignor": {
+#                                "last_name": "Burns",
+#                                "first_name": "Mr."
+#                            },
+#                            "assignments": [
+#                                {
+#                                    "position": "Referee",
+#                                    "position_abbreviation": "R",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 123,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Homer"
+#                                        }
+#                                    }
+#                                },
+#                                {
+#                                    "position": "Asst. Referee",
+#                                    "position_abbreviation": "AR",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 1234,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Marge"
+#                                        }
+#                                    }
+#                                },
+#                                {
+#                                    "position": "Asst. Referee",
+#                                    "position_abbreviation": "AR",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 4321,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Bart"
+#                                        }
+#                                    }
+#                                }
+#                            ]
+#                        }
+#                    },
+#                    {
+#                        "id": 2,
+#                        "game_type": "Coastal",
+#                        "gender": "Girls",
+#                        "localized_date": "Sep 3 2024",
+#                        "localized_time": "6:00 AM",
+#                        "age_group": "Grade 7/8",
+#                        "home_team": "Springfield",
+#                        "away_team": "Isotopes",
+#                        "_embedded": {
+#                            "venue": {
+#                                "name": "Springfield Elementary"
+#                            },
+#                            "assignor": {
+#                                "last_name": "Burns",
+#                                "first_name": "Mr."
+#                            },
+#                            "assignments": [
+#                                {
+#                                    "position": "Referee",
+#                                    "position_abbreviation": "R",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 123,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Homer"
+#                                        }
+#                                    }
+#                                },
+#                                {
+#                                    "position": "Asst. Referee",
+#                                    "position_abbreviation": "AR",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 1234,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Marge"
+#                                        }
+#                                    }
+#                                },
+#                                {
+#                                    "position": "Asst. Referee",
+#                                    "position_abbreviation": "AR",
+#                                    "_embedded": {
+#                                        "official": {
+#                                            "id": 4321,
+#                                            "last_name": "Simpson",
+#                                            "first_name": "Bart"
+#                                        }
+#                                    }
+#                                }
+#                            ]
+#                        }
+#                    }
+#                ]
+#            }
+#        }
+#
+#        mock_requests.get.return_value = mock_response
+#
+#        expected_result = {
+#            1: {
+#                'game_report_url': None,
+#                'home_roster': False,
+#                'away_roster': False,
+#                'referee': {
+#                    'first_name': None,
+#                    'last_name': None
+#                },
+#                'game_date': 'Sep 3 2024',
+#                'game_time': '6:00 PM',
+#                'home_team': 'Springfield',
+#                'away_team': 'Isotopes',
+#                'venue': 'Springfield Elementary',
+#                'sub_venue': None,
+#                'game_type': 'Coastal',
+#                'age_group': 'Grade 7/8',
+#                'gender': 'Boys',
+#                'assignor': 'Mr. Burns'
+#                },
+#            2: {
+#                'game_report_url': None,
+#                'home_roster': False,
+#                'away_roster': False,
+#                'referee': {
+#                    'first_name': None,
+#                    'last_name': None
+#                },
+#                'game_date': 'Sep 3 2024',
+#                'game_time': '6:00 AM',
+#                'home_team': 'Springfield',
+#                'away_team': 'Isotopes',
+#                'venue': 'Springfield Elementary',
+#                'sub_venue': None,
+#                'game_type': 'Coastal',
+#                'age_group': 'Grade 7/8',
+#                'gender': 'Girls',
+#                'assignor': 'Mr. Burns'
+#            }
+#        }
+#
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        result = temp.get_game_ids(CONST_DATE_2022_01_01, CONST_DATE_2022_01_01)
+#        self.assertEqual(result, expected_result)
+#
+#    @patch(ASSIGNR_REQUESTS)
+#    def test_get_league_games(self, mock_requests):
+#        mock_requests.post.return_value = mock_auth_response
+#
+#        mock_response = MagicMock()
+#        mock_response.status_code = 200
+#        mock_response.json.return_value = {}
+#        mock_requests.get.return_value = mock_response
+#
+#        expected_result = {
+#            'first_name': 'Homer',
+#            'last_name': 'Simpson',
+#            'email_addresses': ['hsimpson@springfield.com']
+#        }
+#
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        result = temp.get_league_games('Springfield', CONST_DATE_2022_01_01,
+#                                       CONST_DATE_2022_01_01)
+#        self.assertEqual(result, expected_result)
+#
+#    @patch(ASSIGNR_REQUESTS)
+#    def test_match_games_to_reports(self, mock_requests):
+#        mock_requests.post.return_value = mock_auth_response
+#
+#        mock_response = MagicMock()
+#        mock_response.status_code = 200
+#        mock_response.json.return_value = {}
+#        mock_requests.get.return_value = mock_response
+#
+#        expected_result = {
+#            'first_name': 'Homer',
+#            'last_name': 'Simpson',
+#            'email_addresses': ['hsimpson@springfield.com']
+#        }
+#        games = []
+#
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        result = temp.match_games_to_reports(CONST_DATE_2022_01_01,
+#                                             CONST_DATE_2022_01_01,
+#                                             games)
+#        self.assertEqual(result, expected_result)
 
 
 class TestAssignrHelpers(TestCase):

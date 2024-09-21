@@ -85,6 +85,22 @@ class TestGetArguments(TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(args, expected_args)
 
+    def test_date_value_errors(self):
+        expected_args = {
+            START_DATE: '01-01-1980',
+            END_DATE: '01010101',
+            REFEREE_REMINDER: False
+        }
+
+        with self.assertLogs(level='INFO') as cm:
+            rc, args = get_arguments(['-s', '01-01-1980', '-e', '01010101'])
+        self.assertEqual(cm.output, [
+            'ERROR:missing_game_reports:End Date value, 01010101 is invalid',
+            'ERROR:missing_game_reports:Start Date value, 01-01-1980 is invalid'
+        ])
+        self.assertEqual(rc, 88)
+        self.assertEqual(args, expected_args)
+
     def test_start_date_greater_end_date(self):
         end_date = datetime.strptime(DATE_01012020, "%m/%d/%Y").date()
         start_date = datetime.strptime('01/10/2020', "%m/%d/%Y").date()

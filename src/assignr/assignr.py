@@ -377,17 +377,19 @@ class Assignr:
             try:
                 total_pages = response['page']['pages']
                 for item in response['_embedded']['form_submissions']:
-                    for data in item['_embedded']['values']:
-                        game_id = item["_embedded"]['game']['id']
-                        game_report_url = item['_links']['game_report_webview']['href']
-                        if game_id in games:
-                            away_roster = True if ".uploadAwayTeamRoster.0.url" in data["key"] and \
-                                data["value"] is not None else False
-                            home_roster = True if ".uploadHomeTeamRoster.0.url" in data["key"] and \
-                                data["value"] is not None else False
-                            games[game_id]['game_report_url'] = game_report_url
-                            games[game_id]['home_roster'] = home_roster
-                            games[game_id]['away_roster'] = away_roster
+                    game_id = item["_embedded"]['game']['id']
+                    game_report_url = item['_links']['game_report_webview']['href']
+                    if game_id in games:
+                        data_dict = {}
+                        for data in item['_embedded']['values']:
+                            data_dict[data['key']] = data['value']
+                        away_roster = True if ".uploadAwayTeamRoster.0.url" in data_dict and \
+                                data_dict[".uploadAwayTeamRoster.0.url"] != [] else False
+                        home_roster = True if ".uploadHomeTeamRoster.0.url" in data_dict and \
+                                data_dict[".uploadHomeTeamRoster.0.url"] != [] else False
+                        games[game_id]['game_report_url'] = game_report_url
+                        games[game_id]['home_roster'] = home_roster
+                        games[game_id]['away_roster'] = away_roster
 
             except KeyError as ke:
                 logging.error(f"Key: {ke}, missing from Game Report response")
