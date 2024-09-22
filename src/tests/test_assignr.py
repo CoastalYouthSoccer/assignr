@@ -581,282 +581,111 @@ class TestAssignr(TestCase):
         self.assertEqual(result, expected_result)
 
 
-#    @patch(ASSIGNR_REQUESTS)
-#    def test_get_game_ids(self, mock_requests):
-#        mock_requests.post.return_value = mock_auth_response
-#
-#        mock_response = MagicMock()
-#        mock_response.status_code = 200
-#        mock_response.json.return_value = {
-#            "page": {
-#                "records": 357,
-#                "pages": 8,
-#                "current_page": 1,
-#                "next_page": 2,
-#                "limit": 50
-#            },
-#            "_embedded": {
-#                "games": [
-#                    {
-#                        "id": 1,
-#                        "game_type": "Coastal",
-#                        "gender": "Boys",
-#                        "localized_date": "Sep 3 2024",
-#                        "localized_time": "6:00 PM",
-#                        "age_group": "Grade 7/8",
-#                        "home_team": "Springfield",
-#                        "away_team": "Isotopes",
-#                        "_embedded": {
-#                            "venue": {
-#                                "name": "Springfield Elementary"
-#                            },
-#                            "assignor": {
-#                                "last_name": "Burns",
-#                                "first_name": "Mr."
-#                            },
-#                            "assignments": [
-#                                {
-#                                    "position": "Referee",
-#                                    "position_abbreviation": "R",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 123,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Homer"
-#                                        }
-#                                    }
-#                                },
-#                                {
-#                                    "position": "Asst. Referee",
-#                                    "position_abbreviation": "AR",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 1234,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Marge"
-#                                        }
-#                                    }
-#                                },
-#                                {
-#                                    "position": "Asst. Referee",
-#                                    "position_abbreviation": "AR",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 4321,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Bart"
-#                                        }
-#                                    }
-#                                }
-#                            ]
-#                        }
-#                    },
-#                    {
-#                        "id": 2,
-#                        "game_type": "Coastal",
-#                        "gender": "Girls",
-#                        "localized_date": "Sep 3 2024",
-#                        "localized_time": "6:00 AM",
-#                        "age_group": "Grade 7/8",
-#                        "home_team": "Springfield",
-#                        "away_team": "Isotopes",
-#                        "_embedded": {
-#                            "venue": {
-#                                "name": "Springfield Elementary"
-#                            },
-#                            "assignor": {
-#                                "last_name": "Burns",
-#                                "first_name": "Mr."
-#                            },
-#                            "assignments": [
-#                                {
-#                                    "position": "Referee",
-#                                    "position_abbreviation": "R",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 123,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Homer"
-#                                        }
-#                                    }
-#                                },
-#                                {
-#                                    "position": "Asst. Referee",
-#                                    "position_abbreviation": "AR",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 1234,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Marge"
-#                                        }
-#                                    }
-#                                },
-#                                {
-#                                    "position": "Asst. Referee",
-#                                    "position_abbreviation": "AR",
-#                                    "_embedded": {
-#                                        "official": {
-#                                            "id": 4321,
-#                                            "last_name": "Simpson",
-#                                            "first_name": "Bart"
-#                                        }
-#                                    }
-#                                }
-#                            ]
-#                        }
-#                    }
-#                ]
-#            }
-#        }
-#
-#        mock_requests.get.return_value = mock_response
-#
-#        expected_result = {
-#            1: {
-#                'game_report_url': None,
-#                'home_roster': False,
-#                'away_roster': False,
-#                'referee': {
-#                    'first_name': None,
-#                    'last_name': None
-#                },
-#                'game_date': 'Sep 3 2024',
-#                'game_time': '6:00 PM',
-#                'home_team': 'Springfield',
-#                'away_team': 'Isotopes',
-#                'venue': 'Springfield Elementary',
-#                'sub_venue': None,
-#                'game_type': 'Coastal',
-#                'age_group': 'Grade 7/8',
-#                'gender': 'Boys',
-#                'assignor': 'Mr. Burns'
-#                },
-#            2: {
-#                'game_report_url': None,
-#                'home_roster': False,
-#                'away_roster': False,
-#                'referee': {
-#                    'first_name': None,
-#                    'last_name': None
-#                },
-#                'game_date': 'Sep 3 2024',
-#                'game_time': '6:00 AM',
-#                'home_team': 'Springfield',
-#                'away_team': 'Isotopes',
-#                'venue': 'Springfield Elementary',
-#                'sub_venue': None,
-#                'game_type': 'Coastal',
-#                'age_group': 'Grade 7/8',
-#                'gender': 'Girls',
-#                'assignor': 'Mr. Burns'
-#            }
-#        }
-#
-#        temp = Assignr('123', '234', '345', BASE_URL,
-#                       AUTH_URL)
-#        result = temp.get_game_ids(CONST_DATE_2022_01_01, CONST_DATE_2022_01_01)
-#        self.assertEqual(result, expected_result)
-#
-#    @patch(ASSIGNR_REQUESTS)
-#    def test_get_league_games(self, mock_requests):
-#        mock_requests.post.return_value = mock_auth_response
-#
-#        mock_response = MagicMock()
-#        mock_response.status_code = 200
-#        mock_response.json.return_value = {}
-#        mock_requests.get.return_value = mock_response
-#
-#        expected_result = {
-#            'first_name': 'Homer',
-#            'last_name': 'Simpson',
-#            'email_addresses': ['hsimpson@springfield.com']
-#        }
-#
-#        temp = Assignr('123', '234', '345', BASE_URL,
-#                       AUTH_URL)
-#        result = temp.get_league_games('Springfield', CONST_DATE_2022_01_01,
-#                                       CONST_DATE_2022_01_01)
-#        self.assertEqual(result, expected_result)
-#
-#    @patch(ASSIGNR_REQUESTS)
-#    def test_match_games_to_reports(self, mock_requests):
-#        mock_requests.post.return_value = mock_auth_response
-#
-#        mock_response = MagicMock()
-#        mock_response.status_code = 200
-#        mock_response.json.return_value = {}
-#        mock_requests.get.return_value = mock_response
-#
-#        expected_result = {
-#            'first_name': 'Homer',
-#            'last_name': 'Simpson',
-#            'email_addresses': ['hsimpson@springfield.com']
-#        }
-#        games = []
-#
-#        temp = Assignr('123', '234', '345', BASE_URL,
-#                       AUTH_URL)
-#        result = temp.match_games_to_reports(CONST_DATE_2022_01_01,
-#                                             CONST_DATE_2022_01_01,
-#                                             games)
-#        self.assertEqual(result, expected_result)
+class TestGetGameIds(TestCase):
 
+    def setUp(self):
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None
+        self.instance.site_id = None
 
-#class TestAssignrHelpers(TestCase):
-#    def test_get_game_information(self):
-#        payload = {
-#            'id': 'some_id',
-#            'localized_date': 'date',
-#            'localized_time': 'time',
-#            'start_time': 'start_time',
-#            'home_team': 'home team',
-#            'away_team': 'away team',
-#            'age_group': 'age group',
-#            'venue': 'venue',
-#            'gender': 'boys',
-#            'subvenue': 'sub venue',
-#            'game_type': 'game type',
-#            'league': 'league'
-#        }
-#        expected_results = {
-#            'id': 'some_id',
-#            'date': 'date',
-#            'time': 'time',
-#            'start_time': 'start_time',
-#            'home_team': 'home team',
-#            'away_team': 'away team',
-#            'age_group': 'age group',
-#            'venue': 'venue',
-#            'gender': 'boys',
-#            'sub_venue': 'sub venue',
-#            'game_type': 'game type',
-#            'league': 'league'
-#        }
-#        result = get_game_information(payload)
-#        self.assertEqual(result, expected_results)
+    @patch.object(Assignr, 'get_game_information')
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    @patch('helpers.helpers.format_date_yyyy_mm_dd')
+    def test_get_game_ids(self, mock_format_date, mock_authenticate,
+                          mock_get_site_id, mock_get_requests, mock_get_game_information):
+        mock_format_date.side_effect = lambda dt: dt.strftime('%Y-%m-%d')
+
+        self.instance.token = None
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [{'id': 1, 'game_type': 'Coastal'}, {'id': 2, 'game_type': 'Other'}]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [{'id': 3, 'game_type': 'Coastal'}, {'id': 4, 'game_type': 'Other'}]}
+            })
+        ]
+
+        # Mocking get_game_information to return game details
+        mock_get_game_information.side_effect = lambda game: {'game_id': game['id'], 'info': 'some_info'}
+
+        # Call the method under test
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+
+        # Expected result with only Coastal games
+        expected_result = {
+            1: {'game_id': 1, 'info': 'some_info', 'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            3: {'game_id': 3, 'info': 'some_info', 'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Assertions
+        self.assertEqual(result, expected_result)
+
+        # Verify that the authenticate method was called
+        mock_authenticate.assert_called_once()
+
+        # Verify that the get_site_id method was called
+        mock_get_site_id.assert_called_once()
+
+        # Verify that the API was called twice (pagination)
+        self.assertEqual(mock_get_requests.call_count, 2)
+
+        # Verify that the game information was retrieved for the correct game types
+        mock_get_game_information.assert_any_call({'id': 1, 'game_type': 'Coastal'})
+        mock_get_game_information.assert_any_call({'id': 3, 'game_type': 'Coastal'})
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_site_id')
+#    @patch.object(Assignr, 'authenticate')
+#    def test_get_game_ids_error_handling(self, mock_get_requests, mock_authenticate,
+#                          mock_get_site_id,):
+#        self.instance.token = None
+#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
 #
-#    def test_get_game_information_error(self):
-#        payload = {
-#            'id': 'some_id',
-#            'localized_date': 'date',
-#            'localized_time': 'time',
-#            'start_time': 'start_time',
-#            'home_team': 'home team',
-#            'away_team': 'away team',
-#            'age_group': 'age group',
-#            'venue': 'venue',
-#            'gender': 'boys',
-#            'subvenue': 'sub venue',
-#            'game_type': 'game type'
-#        }
+#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+#        mock_get_requests.return_value = (500, {})
 #
-#        self.assertRaises(KeyError, get_game_information, payload)
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+#
+#        # Expected result is an empty dictionary due to API failure
+#        self.assertEqual(result, {})
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_site_id')
+#    @patch.object(Assignr, 'authenticate')
+#    def test_get_game_ids_keyerror_handling(self, mock_get_requests, mock_authenticate,
+#                          mock_get_site_id,):
+#        self.instance.token = None
+#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+#
+#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+#        mock_get_requests.return_value = (200, {
+#            'page': {'pages': 1},
+#            '_embedded': {'games': [{'id': 1}]}
+#        })
+#
+#        # Call the method and expect it to handle KeyError gracefully
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+
+#        self.assertEqual(result, {})
 
 
 class TestGameInformation(TestCase):
-
     def setUp(self):
-        # Create an instance of the class containing get_game_information
         self.instance = Assignr('123', '234', '345', BASE_URL,
                        AUTH_URL)
 
@@ -957,5 +786,116 @@ class TestGameInformation(TestCase):
         self.assertEqual(result, expected_result)
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestMatchGamesToReports(TestCase):
+
+    def setUp(self):
+        # Set up the instance of the class that contains match_games_to_reports
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 'dummy_token'
+        self.instance.site_id = 123
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    def test_match_games_to_reports(self, mock_authenticate, mock_get_site_id, mock_get_requests):
+        # Mock authenticate to simulate token generation if needed
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'new_dummy_token')
+
+        # Mock get_site_id to set a dummy site_id if needed
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 456)
+
+        # Simulating API responses with pagination (2 pages)
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'form_submissions': [
+                    {
+                        "_embedded": {
+                            "game": {"id": 1},
+                            "values": [
+                                {"key": ".uploadHomeTeamRoster.0.url", "value": ["home_roster_url"]},
+                                {"key": ".uploadAwayTeamRoster.0.url", "value": ["away_roster_url"]}
+                            ]
+                        },
+                        "_links": {'game_report_webview': {'href': 'game_report_url_1'}}
+                    }
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'form_submissions': [
+                    {
+                        "_embedded": {
+                            "game": {"id": 2},
+                            "values": [
+                                {"key": ".uploadHomeTeamRoster.0.url", "value": []},  # no home roster
+                                {"key": ".uploadAwayTeamRoster.0.url", "value": ["away_roster_url"]}
+                            ]
+                        },
+                        "_links": {'game_report_webview': {'href': 'game_report_url_2'}}
+                    }
+                ]}
+            })
+        ]
+
+        # Simulating the input 'games' dictionary
+        games = {
+            1: {'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            2: {'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Define start and end dates
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+
+        # Call the method under test
+        result = self.instance.match_games_to_reports(start_dt, end_dt, games)
+
+        # Expected result after processing both pages
+        expected_result = {
+            1: {'game_report_url': 'game_report_url_1', 'home_roster': True, 'away_roster': True},
+            2: {'game_report_url': 'game_report_url_2', 'home_roster': False, 'away_roster': True}
+        }
+
+        # Assert that the games dictionary is updated as expected
+        self.assertEqual(result, expected_result)
+
+        # Check that no errors occurred
+        mock_authenticate.assert_not_called()  # token was already set
+
+    @patch.object(Assignr, 'get_requests')
+    def test_match_games_to_reports_keyerror_handling(self, mock_get_requests):
+        # Simulate a response missing required keys to trigger KeyError
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {'form_submissions': [
+                {
+                    "_embedded": {
+                        "game": {"id": 1},
+                        "values": []
+                    },
+                    "_links": {'game_report_webview': {'href': 'game_report_url_1'}}
+                }
+            ]}
+        })
+
+        # Simulating the input 'games' dictionary
+        games = {
+            1: {'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Define start and end dates
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+
+        # Call the method under test
+        result = self.instance.match_games_to_reports(start_dt, end_dt, games)
+
+        # Expected result should still update the game_report_url but no roster info due to missing keys
+        expected_result = {
+            1: {'game_report_url': 'game_report_url_1', 'home_roster': False, 'away_roster': False}
+        }
+
+        # Assert that the games dictionary is updated correctly
+        self.assertEqual(result, expected_result)
