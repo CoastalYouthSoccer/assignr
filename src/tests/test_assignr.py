@@ -899,3 +899,100 @@ class TestMatchGamesToReports(TestCase):
 
         # Assert that the games dictionary is updated correctly
         self.assertEqual(result, expected_result)
+
+
+class TestGetGameIds(TestCase):
+
+    def setUp(self):
+        # Set up an instance of the class that contains get_game_ids
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_game_information')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    @patch('helpers.helpers.format_date_yyyy_mm_dd')
+    def test_get_game_ids(self, mock_format_date, mock_authenticate, mock_get_site_id, mock_get_game_information, mock_get_requests):
+        # Mocking format_date_yyyy_mm_dd
+        mock_format_date.side_effect = lambda dt: dt
+
+        # Mocking the authenticate and get_site_id methods
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Simulating API response with pagination (2 pages)
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [
+                    {'id': 1, 'game_type': 'Coastal'},
+                    {'id': 2, 'game_type': 'Other'}
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [
+                    {'id': 3, 'game_type': 'Coastal'}
+                ]}
+            })
+        ]
+
+        # Mocking get_game_information to return dummy game info
+        mock_get_game_information.side_effect = lambda item: {
+            'id': item['id'],
+            'game_report_url': None,
+            'home_roster': None,
+            'away_roster': None
+        }
+
+        # Define the date range and game type
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+        game_type = "Coastal"
+
+        # Call the method under test
+        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
+
+        # Expected result only includes Coastal games
+        expected_result = {
+            1: {'id': 1, 'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            3: {'id': 3, 'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
+
+        # Verify that the methods were called correctly
+        mock_authenticate.assert_called_once()  # authenticate should be called since token is None
+        mock_get_site_id.assert_called_once()  # get_site_id should be called since site_id is None
+
+        # Check that get_requests was called twice (pagination handling)
+        self.assertEqual(mock_get_requests.call_count, 2)
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_game_information')
+#    def test_get_game_ids_api_failure(self, mock_get_game_information, mock_get_requests):
+#        # Simulate an unsuccessful API call (status code != 200)
+#        mock_get_requests.return_value = (500, None)
+#
+#        # Simulating the input 'games' dictionary
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        game_type = "Coastal"
+#
+#        # Call the method under test
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
+#
+#        # Expected result should be an empty dictionary since the API failed
+#        expected_result = {}
+#
+#        # Assert that the result is an empty dictionary
+#        self.assertEqual(result, expected_result)
+#
+#        # Verify that the request was made once and failed
+#        mock_get_requests.assert_called_once()
+
+
