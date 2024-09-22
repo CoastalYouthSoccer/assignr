@@ -996,3 +996,104 @@ class TestGetGameIds(TestCase):
 #        mock_get_requests.assert_called_once()
 
 
+import unittest
+from unittest.mock import patch, MagicMock
+
+class TestGetAssignors(unittest.TestCase):
+
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    def test_get_assignors_success(self, mock_authenticate, mock_get_site_id, mock_get_requests):
+        # Mock the authenticate and get_site_id methods
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Mocking the response for the first page of users
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'users': [
+                    {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True, 'active': True},
+                    {'first_name': 'Jane', 'last_name': 'Smith', 'email_addresses': ['jane@example.com'], 'assignor': False, 'active': True},
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'users': [
+                    {'first_name': 'Emily', 'last_name': 'Davis', 'email_addresses': ['emily@example.com'], 'assignor': True, 'active': True},
+                    {'first_name': 'Chris', 'last_name': 'Brown', 'email_addresses': ['chris@example.com'], 'assignor': True, 'active': False},
+                ]}
+            })
+        ]
+
+        # Call the method under test
+        result = self.instance.get_assignors()
+
+        # Expected result should only include active assignors
+        expected_result = [
+            {'first_name': 'John', 'last_name': 'Doe', 'email': 'john@example.com'},
+            {'first_name': 'Emily', 'last_name': 'Davis', 'email': 'emily@example.com'}
+        ]
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
+
+        # Verify that the methods were called correctly
+        mock_authenticate.assert_called_once()  # authenticate should be called since token is None
+        mock_get_site_id.assert_called_once()  # get_site_id should be called since site_id is None
+
+        # Check that get_requests was called twice (pagination handling)
+        self.assertEqual(mock_get_requests.call_count, 2)
+        mock_get_requests.assert_any_call(
+            'sites/123/users',
+            params={'page': 1}
+        )
+        mock_get_requests.assert_any_call(
+            'sites/123/users',
+            params={'page': 2}
+        )
+
+#    @patch.object(Assignr, 'get_requests')
+#    def test_get_assignors_api_failure(self, mock_get_requests):
+#        # Simulate an unsuccessful API call (status code != 200)
+#        mock_get_requests.return_value = (500, None)
+#
+#        # Call the method under test
+#        result = self.instance.get_assignors()
+#
+#        # Expected result should be an empty list since the API failed
+#        expected_result = []
+#
+#        # Assert that the result is an empty list
+#        self.assertEqual(result, expected_result)
+#
+#        # Verify that the request was made once and failed
+#        mock_get_requests.assert_called_once()
+#
+#    @patch.object(Assignr, 'get_requests')
+#    def test_get_assignors_key_error(self, mock_get_requests):
+#        # Simulate an API response with a missing key (KeyError scenario)
+#        mock_get_requests.return_value = (200, {
+#            'page': {'pages': 1},
+#            '_embedded': {'users': [
+#                {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True}  # 'active' key is missing
+#            ]}
+#        })
+#
+#        # Call the method under test
+#        result = self.instance.get_assignors()
+#
+#        # Expected result should be an empty list since the key 'active' is missing
+#        expected_result = []
+#
+#        # Assert that the result is an empty list
+#        self.assertEqual(result, expected_result)
+#
