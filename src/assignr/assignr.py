@@ -1,114 +1,14 @@
 from datetime import datetime
 import requests
 import logging
-import re
-from helpers.helpers import (format_date_yyyy_mm_dd, set_boolean_value)
+from helpers.constants import START_TIME
+from helpers.helpers import (format_date_yyyy_mm_dd, process_game_report,
+                             get_coaches_name)
 
 logger = logging.getLogger(__name__)
 
-START_TIME = '.startTime'
-NOT_ASSIGNED = "Not Assigned"
 SEARCH_START_DT = "search[start_date]"
 SEARCH_END_DT = "search[end_date]"
-ADMIN_REVIEW = ".adminReview"
-ADMIN_NARRATIVE = ".adminNarrative"
-CREW_CHANGES = ".crewChanges"
-NARRATIVE = ".description"
-
-def get_coaches_name(coaches, age_group, gender, team):
-    try:
-        return coaches[age_group][gender][team]
-    except KeyError:
-        return 'Unknown'
-
-def get_match_count(data, match):
-    pattern = re.compile(match)
-
-    return sum(1 for key in data.keys() if pattern.match(key))
- 
-def get_referees(payload):
-    pattern = r'\.officials\.\d+\.position'
-    found_cnt = get_match_count(payload, pattern)
-    results = []
-    for cnt in range(found_cnt):
-        results.append({
-            "name": payload[f'.officials.{cnt}.name'],
-            "position": payload[f'.officials.{cnt}.position']
-        })
-
-# Make sure three referees are in the dictionary. Assumes missing positions are ARs
-    for cnt in range(found_cnt, 3):
-        results.append({
-            "name": NOT_ASSIGNED,
-            "position": "Asst. Referee"
-        })
-    return results
-
-def get_misconducts(payload):
-    pattern = r'\.misconductGrid\.\d+\.name'
-    found_cnt = get_match_count(payload, pattern)
-    results = []
-    for cnt in range(found_cnt):
-        results.append({
-            "name": payload[f'.misconductGrid.{cnt}.name'],
-            "role": payload[f'.misconductGrid.{cnt}.role'],
-            "team": payload[f'.misconductGrid.{cnt}.team'],
-            "minute": payload[f'.misconductGrid.{cnt}.minute'],
-            "offense": payload[f'.misconductGrid.{cnt}.offense'],
-            "description": payload[f'.misconductGrid.{cnt}.description'],
-            "pass_number": payload[f'.misconductGrid.{cnt}.passIdNumber'],
-            "caution_send_off": payload[f'.misconductGrid.{cnt}.cautionSendOff']
-        })
-
-    return results
-
-def process_game_report(data):
-    result = None
-    if ADMIN_REVIEW not in data:
-        if data[NARRATIVE]:
-            data[ADMIN_REVIEW] = 'True'
-        else:
-            data[ADMIN_REVIEW] = None
-
-    if ADMIN_NARRATIVE not in data:
-        data[ADMIN_NARRATIVE] = None
-
-    if CREW_CHANGES not in data:
-        data[CREW_CHANGES] = None
-
-    try:
-        if NARRATIVE in data:
-            narrative = data[NARRATIVE]
-        else:
-            narrative = None
-        result = {
-            "admin_review": set_boolean_value(data[ADMIN_REVIEW]),
-            "misconduct": set_boolean_value(data['.misconductCheckbox']),
-            'assignments_correct': set_boolean_value(data['.assignmentsCorrect']),
-            'home_team_score': data['.homeTeamScore'],
-            'away_team_score': data['.awayTeamScore'],
-            'officials': get_referees(data),
-            'author': data['.author_name'],
-            'game_dt': data[START_TIME],
-            'home_team': data['.homeTeam'],
-            'away_team': data['.awayTeam'],
-            'venue_subvenue': data['.venue'],
-            'league': data['.league'],
-            'age_group': data['.ageGroup'],
-            'gender': data['.gender'],
-            'misconducts': get_misconducts(data),
-            'home_coach': 'Unknown',
-            'away_coach': 'Unknown',
-            'narrative': narrative,
-            'ejections': set_boolean_value(data['.ejections']),
-            'admin_narrative': data[ADMIN_NARRATIVE],
-            'crewChanges': data[CREW_CHANGES]
-        }
-
-    except KeyError as ke:
-        logging.error(f"Key: {ke}, missing from process_game_report")
-
-    return result
 
 
 class Assignr:
