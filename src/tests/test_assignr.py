@@ -1,9 +1,8 @@
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
-from assignr.assignr import (Assignr, get_game_information, get_referees,
-                             get_match_count, get_misconducts,
-                             get_coaches_name)
+from assignr.assignr import (Assignr, get_referees, get_coaches_name,
+                             get_match_count, get_misconducts)
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
@@ -676,6 +675,7 @@ class TestAssignr(TestCase):
         result = temp.get_center_referee_game(payload)
         self.assertEqual(result, expected_result)
 
+
 #    @patch(ASSIGNR_REQUESTS)
 #    def test_get_game_ids(self, mock_requests):
 #        mock_requests.post.return_value = mock_auth_response
@@ -1084,51 +1084,162 @@ class TestAssignrHelpers(TestCase):
 
         self.assertEqual(expected_results, get_misconducts(payload))
 
-    def test_get_game_information(self):
-        payload = {
-            'id': 'some_id',
-            'localized_date': 'date',
-            'localized_time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'subvenue': 'sub venue',
-            'game_type': 'game type',
-            'league': 'league'
-        }
-        expected_results = {
-            'id': 'some_id',
-            'date': 'date',
-            'time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'sub_venue': 'sub venue',
-            'game_type': 'game type',
-            'league': 'league'
-        }
-        result = get_game_information(payload)
-        self.assertEqual(result, expected_results)
+#    def test_get_game_information(self):
+#        payload = {
+#            'id': 'some_id',
+#            'localized_date': 'date',
+#            'localized_time': 'time',
+#            'start_time': 'start_time',
+#            'home_team': 'home team',
+#            'away_team': 'away team',
+#            'age_group': 'age group',
+#            'venue': 'venue',
+#            'gender': 'boys',
+#            'subvenue': 'sub venue',
+#            'game_type': 'game type',
+#            'league': 'league'
+#        }
+#        expected_results = {
+#            'id': 'some_id',
+#            'date': 'date',
+#            'time': 'time',
+#            'start_time': 'start_time',
+#            'home_team': 'home team',
+#            'away_team': 'away team',
+#            'age_group': 'age group',
+#            'venue': 'venue',
+#            'gender': 'boys',
+#            'sub_venue': 'sub venue',
+#            'game_type': 'game type',
+#            'league': 'league'
+#        }
+#        result = get_game_information(payload)
+#        self.assertEqual(result, expected_results)
+#
+#    def test_get_game_information_error(self):
+#        payload = {
+#            'id': 'some_id',
+#            'localized_date': 'date',
+#            'localized_time': 'time',
+#            'start_time': 'start_time',
+#            'home_team': 'home team',
+#            'away_team': 'away team',
+#            'age_group': 'age group',
+#            'venue': 'venue',
+#            'gender': 'boys',
+#            'subvenue': 'sub venue',
+#            'game_type': 'game type'
+#        }
+#
+#        self.assertRaises(KeyError, get_game_information, payload)
 
-    def test_get_game_information_error(self):
+
+import unittest
+from unittest.mock import patch
+
+class TestGameInformation(unittest.TestCase):
+
+    def setUp(self):
+        # Create an instance of the class containing get_game_information
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+
+    @patch.object(Assignr, 'get_referee_information')
+    @patch.object(Assignr, 'get_referees_by_assignments')
+    def test_get_game_information(self, mock_get_referees_by_assignments,
+                                mock_get_referee_information):
+        # Prepare mock return values for assignor and referees
+        mock_get_referee_information.return_value = {'id': 123, 'name': 'John Doe'}
+        mock_get_referees_by_assignments.return_value = [
+            {'id': 1, 'name': 'Referee A'},
+            {'id': 2, 'name': 'Referee B'}
+        ]
+        
+        # Create a sample payload that the function expects
         payload = {
-            'id': 'some_id',
-            'localized_date': 'date',
-            'localized_time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'subvenue': 'sub venue',
-            'game_type': 'game type'
+            "id": 101,
+            "localized_date": "2024-09-01",
+            "localized_time": "15:00",
+            "start_time": "14:45",
+            "home_team": "Team A",
+            "away_team": "Team B",
+            "age_group": "U12",
+            "league": "Youth League",
+            "gender": "M",
+            "game_type": "Friendly",
+            "cancelled": False,
+            "_embedded": {
+                "assignor": {"id": 123},
+                "assignments": [{'role': 'Referee'}, {'role': 'Assistant Referee'}],
+                "venue": "Stadium A"
+            },
+            "subvenue": "Field 2"
         }
 
-        self.assertRaises(KeyError, get_game_information, payload)
+        # Call the method under test
+        result = self.instance.get_game_information(payload)
+
+        # Assert that the mock methods were called with the correct arguments
+        mock_get_referee_information.assert_called_once_with('/users/123')
+        mock_get_referees_by_assignments.assert_called_once_with([{'role': 'Referee'}, {'role': 'Assistant Referee'}])
+
+        # Assert that the result matches the expected output
+        expected_result = {
+            'id': 101,
+            'game_date': '2024-09-01',
+            'game_time': '15:00',
+            'start_time': '14:45',
+            'home_team': 'Team A',
+            'away_team': 'Team B',
+            'age_group': 'U12',
+            'league': 'Youth League',
+            'venue': "Stadium A",
+            'sub_venue': "Field 2",
+            'gender': 'M',
+            'game_type': 'Friendly',
+            'cancelled': False,
+            'referees': [
+                {'id': 1, 'name': 'Referee A'},
+                {'id': 2, 'name': 'Referee B'}
+            ],
+            'assignor': {'id': 123, 'name': 'John Doe'}
+        }
+
+        self.assertEqual(result, expected_result)
+
+    @patch.object(Assignr, 'get_referee_information')
+    @patch.object(Assignr, 'get_referees_by_assignments')
+    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments, mock_get_referee_information):
+        # Prepare a payload with missing keys to simulate a KeyError
+        payload = {
+            "id": 101,
+            # Missing several keys to trigger the KeyError exception
+        }
+
+        # Call the method under test
+        result = self.instance.get_game_information(payload)
+
+        # Assert that the result contains None values for missing fields
+        expected_result = {
+            'id': 101,
+            'game_date': None,
+            'game_time': None,
+            'start_time': None,
+            'home_team': None,
+            'away_team': None,
+            'age_group': None,
+            'league': None,
+            'venue': None,
+            'sub_venue': None,
+            'gender': None,
+            'game_type': None,
+            'cancelled': None,
+            'referees': None,
+            'assignor': None
+        }
+
+        self.assertEqual(result, expected_result)
+
+
+if __name__ == '__main__':
+    unittest.main()

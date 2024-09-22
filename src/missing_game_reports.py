@@ -6,9 +6,8 @@ from getopt import (getopt, GetoptError)
 from datetime import (datetime, timedelta)
 
 from assignr.assignr import Assignr
-from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
-                             get_email_vars, create_message,
-                             get_assignor_information)
+from helpers.helpers import (get_environment_vars, get_email_vars,
+                             create_message, get_assignor_information)
 from helpers.email import EMailClient
 from helpers import constants
 
@@ -134,27 +133,27 @@ def main():
 # If the rosters or report are missing
 # If this is a reminder send to the CR and the assignor
 # if this is EOW report send to ????
-        if game['game_report_url'] is None or not game['home_roster'] or \
-            not game['away_roster']:
-            print(game)
-#            game_reports.append(game)
-#            if args[REFEREE_REMINDER]:
-#                message = create_message(game, 'missing_referee_report.html.jinja')
-#                email_addresses = ",".join(["pwhite@delpwhite.org"])
-#
+        if not game['cancelled'] and (game['game_report_url'] is None or \
+            not game['home_roster'] or not game['away_roster']): 
+            game_reports.append(game)
+            if args[REFEREE_REMINDER]:
+#                email_addresses = ",".join(game['referee']['email_addresses']).join(game['assignor']['email_addresses'])
+                message = create_message(game, 'missing_referee_report.html.jinja')
+                email_addresses = ",".join(["pwhite@delpwhite.org"])
+
 #                response = send_email(email_vars, subject, message,
 #                          email_addresses)
 #                if response:
 #                    logger.error(response)
-#
-#    content = {'reports': game_reports}
-#    message = create_message(content, 'missing_report.html.jinja')
-#    email_addresses = ",".join(["pwhite@delpwhite.org"])
-#
-#    response = send_email(email_vars, subject, message, email_addresses)
-#    if response:
-#        logger.error(response)
-#    logger.info("Completed Missing Game Report")
+
+    content = {'reports': game_reports}
+    message = create_message(content, 'missing_report.html.jinja')
+    email_addresses = ",".join(["pwhite@delpwhite.org"])
+
+    response = send_email(email_vars, subject, message, email_addresses)
+    if response:
+        logger.error(response)
+    logger.info("Completed Missing Game Report")
 
 if __name__ == "__main__":
     main()

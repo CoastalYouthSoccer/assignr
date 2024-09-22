@@ -62,22 +62,6 @@ def get_misconducts(payload):
 
     return results
 
-def get_game_information(payload):
-    return {
-        'id': payload["id"],
-        'date': payload["localized_date"],
-        'time': payload["localized_time"],
-        'start_time': payload["start_time"],
-        'home_team': payload["home_team"],
-        'away_team': payload["away_team"],
-        'age_group': payload["age_group"],
-        'league': payload["league"],
-        'venue': payload["venue"],
-        'gender': payload["gender"],
-        'sub_venue': payload["subvenue"],
-        'game_type': payload["game_type"],
-    }
-
 def process_game_report(data):
     result = None
     if ADMIN_REVIEW not in data:
@@ -248,6 +232,50 @@ class Assignr:
         }
 
         return referee
+
+    def get_game_information(self, payload):
+        try:
+            sub_item = payload["_embedded"]
+            assignor = self.get_referee_information(f"/users/{sub_item['assignor']['id']}")
+            referees = self.get_referees_by_assignments(sub_item['assignments'])
+            sub_venue = payload["subvenue"] if "subvenue" in payload else None
+
+            return {
+                'id': payload["id"],
+                'game_date': payload["localized_date"],
+                'game_time': payload["localized_time"],
+                'start_time': payload["start_time"],
+                'home_team': payload["home_team"],
+                'away_team': payload["away_team"],
+                'age_group': payload["age_group"],
+                'league': payload["league"],
+                'venue': sub_item["venue"],
+                'sub_venue': sub_venue,
+                'gender': payload["gender"],
+                'game_type': payload["game_type"],
+                'cancelled': payload["cancelled"],
+                'referees': referees,
+                'assignor': assignor 
+            }
+        except KeyError as ke:
+            logging.error(f"Key: {ke}, missing from Game Information Function")
+            return {
+                'id': payload["id"],
+                'game_date': None,
+                'game_time': None,
+                'start_time': None,
+                'home_team': None,
+                'away_team': None,
+                'age_group': None,
+                'league': None,
+                'venue': None,
+                'sub_venue': None,
+                'gender': None,
+                'game_type': None,
+                'cancelled': None,
+                'referees': None,
+                'assignor': None                 
+            }
 
     def get_reports(self, start_dt, end_dt, assignors, coaches):
         if not self.token:
@@ -430,27 +458,11 @@ class Assignr:
                 total_pages = response['page']['pages']
                 for item in response['_embedded']['games']:
                     if item['game_type'] == game_type:
-                        sub_item = item["_embedded"]
-                        assignor = f'{sub_item["assignor"]["first_name"]}' \
-                            f' {sub_item["assignor"]["last_name"]}'
-                        referee = self.get_center_referee_game(sub_item['assignments'])
-                        sub_venue = item["subvenue"] if "subvenue" in item else None
-                        results[item['id']] = {
-                            'game_report_url': None,
-                            'home_roster': False,
-                            'away_roster': False,
-                            'referee': referee,
-                            'game_date': item["localized_date"],
-                            'game_time': item["localized_time"],
-                            'home_team': item["home_team"],
-                            'away_team': item["away_team"],
-                            'venue': sub_item["venue"]["name"],
-                            'sub_venue': sub_venue,
-                            'game_type': item["game_type"],
-                            'age_group': item["age_group"],
-                            'gender': item["gender"],
-                            'assignor': assignor
-                        }
+                        game_info = self.get_game_information(item)
+                        game_info['game_report_url'] = None
+                        game_info['home_roster'] = None
+                        game_info['away_roster'] = None
+                        results[item['id']] = game_info
 
             except KeyError as ke:
                 logging.error(f"Key: {ke}, missing from Game Report response")
@@ -483,24 +495,8 @@ class Assignr:
         try:
             for item in response['_embedded']['games']:
                 if item['league'] == league:
-                    sub_item = item["_embedded"]
-                    assignor = f'{sub_item["assignor"]["first_name"]}' \
-                        f' {sub_item["assignor"]["last_name"]}'
-                    referees = self.get_referees_by_assignments(sub_item['assignments'])
-                    sub_venue = item["subvenue"] if "subvenue" in item else None
-                    results.append({
-                        'officials': referees,
-                        'game_date': item["localized_date"],
-                        'game_time': item["localized_time"],
-                        'home_team': item["home_team"],
-                        'away_team': item["away_team"],
-                        'venue': sub_item["venue"]["name"],
-                        'sub_venue': sub_venue,
-                        'game_type': item["game_type"],
-                        'age_group': item["age_group"],
-                        'gender': item["gender"],
-                        'assignor': assignor
-                    })
+                    game_info = self.get_game_information(item)
+                    results.append(game_info)
 
         except KeyError as ke:
             logging.error(f"Key: {ke}, missing from Game response")

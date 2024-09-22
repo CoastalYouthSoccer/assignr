@@ -1,9 +1,9 @@
 {%- if reports -%}
-<h1>Game Report Issues ({{ start_date }} - {{ end_date }})</h1>
-{%- for report in reports -%}
+<h1>Game Report Issues</h1>
 <p>The following games need attention:</p>
 <table>
   <tr>
+    <td><b>League</b></td>
     <td><b>Date/Time</b></td>
     <td><b>Age Group/Gender</b></td>
     <td><b>Venue/Sub-Venue</b></td>
@@ -11,17 +11,28 @@
     <td><b>Home Roster?</b></td>
     <td><b>Away Roster?</b></td>
   </tr>
+{%- for report in reports -%}
   <tr>
-    <td>{{ report['game_dt'] | format_mm_dd_yyyy }} @ {{ report['game_dt'] | format_hh_mm }}</td>
+    <td>{{ report['league'] }}</td>
+    <td>{{ report['game_date'] }} @ {{ report['game_time'] }}</td>
     <td>{{ report['age_group'] }} / {{ report['gender'] }}</td>
-    <td>{{ report['venue'] }} / {{ report['sub_venue'] }}</td>
+    <td>{{ report['venue']['name'] }} / {{ report['sub_venue'] }}</td>
     {%- if report['game_report_url'] -%}
-    <td>{{ <a href="{{ report['game_report_url'] }}">YES</a> }}</td>
+    <td><a href="{{ report['game_report_url'] }}">YES</a></td>
     {%- else -%}
     <td>NO</td>
     {% endif -%}
-    <td>{{ report['home_roster'] }}</td>
-    <td>{{ report['away_roster'] }}</td>
+    {%- if report['home_roster'] -%}
+    <td>YES</td>
+    {%- else -%}
+    <td>NO</td>
+    {%- endif -%}
+    {%- if report['away_roster'] -%}
+    <td>YES</td>
+    {%- else -%}
+    <td>NO</td>
+    {%- endif -%}
   </tr>
+{%- endfor -%}
 </table> 
 {%- endif -%}

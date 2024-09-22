@@ -43,9 +43,15 @@ class TestGetArguments(TestCase):
             'start_date': start_date,
             'end_date': DATE_FORMAT_01012020
         }
+
+        expected_error = [
+            f'INFO:game_report:End Date set to {DATE_FORMAT_01012020}',
+            'INFO:game_report:No start date provided, setting to 2019-12-25',
+            'INFO:game_report:Start Date set to 2019-12-25'
+        ]
         with self.assertLogs(level='INFO') as cm:
             rc, args = get_arguments(['-e', DATE_01012020])
-        self.assertEqual(cm.output, [ERROR_USAGE])
+        self.assertEqual(cm.output, expected_error)
         self.assertEqual(rc, 0)
         self.assertEqual(args, expected_args)
 
