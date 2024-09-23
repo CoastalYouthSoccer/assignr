@@ -996,10 +996,7 @@ class TestGetGameIds(TestCase):
 #        mock_get_requests.assert_called_once()
 
 
-import unittest
-from unittest.mock import patch, MagicMock
-
-class TestGetAssignors(unittest.TestCase):
+class TestGetAssignors(TestCase):
 
     def setUp(self):
         # Set up an instance of the class that contains get_assignors
@@ -1097,3 +1094,71 @@ class TestGetAssignors(unittest.TestCase):
 #        # Assert that the result is an empty list
 #        self.assertEqual(result, expected_result)
 #
+
+class TestGetLeagueGames(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_successful_response(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        mock_get_requests.return_value = (200, {
+            '_embedded': {
+                'games': [
+                    {'id': 1, 'league': 'Premier', 'game_type': 'Type1'},
+                    {'id': 2, 'league': 'Championship', 'game_type': 'Type2'}
+                ]
+            }
+        })
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(len(result), 1)  # Only 1 game from the Premier league
+        self.assertEqual(result[0]['id'], 1)
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_failed_api_call(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+        mock_get_requests.return_value = (500, None)
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(result, [])  # No results on failed API call
+#        mock_logger.error.assert_called_once_with('Failed to get games: 500')
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_key_error_in_response(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Simulate missing keys in the response
+        mock_get_requests.return_value = (200, {
+            '_embedded': {}  # Missing 'games'
+        })
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(result, [])  # No results due to KeyError
+#        mock_logger.error.assert_called_once_with("Key: 'games', missing from Game response")
