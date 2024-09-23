@@ -1,4 +1,5 @@
 from os import environ
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock, ANY)
 from googleapiclient.errors import HttpError
@@ -7,7 +8,8 @@ from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              get_email_vars, format_str_hh_mm,
                              format_str_mm_dd_yyyy, load_sheet,
                              rows_to_dict, get_match_count, get_misconducts,
-                             get_referees, get_coaches_name)
+                             get_referees, get_coaches_name, set_boolean_value,
+                             format_date_mm_dd_yyyy, format_date_hh_mm)
 
 CONST_GRADE_78 = "Grade 7/8"
 CLIENT_SECRET = "client_secret"
@@ -612,3 +614,82 @@ class TestHelpers(TestCase):
         }
         result = get_coaches_name(coaches, 'Grade 7/8', 'Girls', 'Springfield')
         self.assertEqual(result, 'Unknown')
+
+
+import unittest
+
+class TestSetBooleanValue(unittest.TestCase):
+    
+    def test_none_value(self):
+        self.assertFalse(set_boolean_value(None))
+    
+    def test_true_values(self):
+        true_values = ['true', '1', 't', 'y', 'yes']
+        for value in true_values:
+            with self.subTest(value=value):
+                self.assertTrue(set_boolean_value(value))
+    
+    def test_false_values(self):
+        false_values = ['false', '0', 'n', 'no']
+        for value in false_values:
+            with self.subTest(value=value):
+                self.assertFalse(set_boolean_value(value))
+    
+    def test_invalid_values(self):
+        invalid_values = ['', 'invalid', 'abc', 'random string']
+        for value in invalid_values:
+            with self.subTest(value=value):
+                self.assertFalse(set_boolean_value(value))
+
+
+class TestFormatDateMMDDYYYY(TestCase):
+
+    def test_valid_date(self):
+        valid_date = datetime(2023, 9, 22)
+        formatted = format_date_mm_dd_yyyy(valid_date)
+        self.assertEqual(formatted, "09/22/2023")
+
+    def test_parser_error(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.ParserError', Exception):
+                date_input = "invalid_date"  # Simulating a parser issue
+                formatted = format_date_mm_dd_yyyy(date_input)
+        self.assertIsNone(formatted)
+        self.assertEqual(cm.output, [
+            f'ERROR:helpers.helpers:Failed to parse date: {date_input}'
+        ])        
+
+    def test_unknown_timezone_warning(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.UnknownTimezoneWarning', Warning):
+                date_input = "invalid_time_zone"  # Simulating an unknown timezone
+                formatted = format_date_mm_dd_yyyy(date_input)
+        self.assertIsNone(formatted)
+#        self.assertEqual(cm.output, [
+#            f"ERROR:helpers.helpers:Invalid Time zone: {date_input}"
+#        ])
+
+#    def test_general_exception(self):
+#        with self.assertLogs(level='INFO') as cm:
+#            with patch('helpers.helpers.datetime.datetime.strftime', side_effect=Exception("Unknown error")):
+#                date_input = datetime(2023, 9, 22)
+#                formatted = format_date_mm_dd_yyyy(date_input)
+#        self.assertIsNone(formatted)
+#        self.assertEqual(cm.output, ["ERROR:helpers.helpers:Unknown error: Unknown error"])
+
+
+class TestFormatDateHHMM(TestCase):
+    def test_valid_date(self):
+        valid_date = datetime(2023, 9, 22, 15, 45)  # 3:45 PM
+        formatted = format_date_hh_mm(valid_date)
+        self.assertEqual(formatted, "03:45 PM")
+
+    def test_parser_error(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.ParserError', Exception):
+                date_input = "invalid_date"  # Simulating a parser issue
+                formatted = format_date_hh_mm(date_input)
+        self.assertIsNone(formatted)
+        self.assertEqual(cm.output, [
+            f'ERROR:helpers.helpers:Failed to parse date: {date_input}'
+        ])  
