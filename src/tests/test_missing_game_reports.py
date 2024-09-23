@@ -1,6 +1,10 @@
+from os import environ
 from datetime import (datetime, timedelta)
+from helpers import constants
+from missing_game_reports import get_arguments, main
+
 from unittest import TestCase
-from missing_game_reports import get_arguments
+from unittest.mock import (patch, MagicMock)
 
 ERROR_USAGE='ERROR:missing_game_reports:USAGE: missing_game_reports.py -s <start-date>' \
     ' -e <end-date> DATE FORMAT=MM/DD/YYYY -r'
@@ -11,6 +15,17 @@ DATE_FORMAT_01012021 = datetime.strptime(DATE_01012021, "%m/%d/%Y").date()
 START_DATE = 'start_date'
 END_DATE = 'end_date'
 REFEREE_REMINDER = 'referee_reminder'
+CLIENT_SECRET = "client_secret"
+CLIENT_ID = "client_id"
+CLIENT_SCOPE = "client_scope"
+AUTH_URL = "auth_url"
+BASE_URL = "base_url"
+ADMIN_EMAIL = "admin_email"
+MISCONDUCTS_EMAIL = "misconducts_email"
+EMAIL_SERVER = "smtp.gmail.com"
+EMAIL_PORT = "587"
+EMAIL_USERNAME = "email_username"
+EMAIL_PASSWORD = "email_password"
 
 class TestGetArguments(TestCase):
     def test_help(self):
@@ -118,3 +133,134 @@ class TestGetArguments(TestCase):
         ])
         self.assertEqual(rc, 88)
         self.assertEqual(args, expected_args)
+
+
+class TestMainFunction(TestCase):
+    @patch.dict(environ,
+        {
+            constants.CLIENT_SECRET: CLIENT_SECRET,
+            constants.CLIENT_ID: CLIENT_ID,
+            constants.CLIENT_SCOPE: CLIENT_SCOPE,
+            constants.AUTH_URL: AUTH_URL,
+            constants.BASE_URL: BASE_URL,
+            constants.EMAIL_SERVER: EMAIL_SERVER,
+            constants.EMAIL_PORT: EMAIL_PORT,
+            constants.EMAIL_USERNAME: EMAIL_USERNAME,
+            constants.EMAIL_PASSWORD: EMAIL_PASSWORD,
+            constants.ADMIN_EMAIL: ADMIN_EMAIL,
+            constants.MISCONDUCTS_EMAIL: MISCONDUCTS_EMAIL
+        }, clear=True)
+    @patch('missing_game_reports.get_arguments')
+    @patch('assignr.assignr.Assignr')
+    @patch('helpers.helpers.get_assignor_information')
+    @patch('helpers.helpers.create_message')
+    @patch('missing_game_reports.send_email')
+    def test_main_success(self, mock_send_email, mock_create_message,
+                          mock_get_assignor_information, mock_assignr,
+                          mock_get_arguments):
+        # Mock return values
+        mock_get_arguments.return_value = (0, {'START_DATE': '2023-09-01',
+                                               'END_DATE': '2023-09-22', 
+                                               'REFEREE_REMINDER': False})
+        
+        # Mock Assignr instance
+        mock_assignr_instance = MagicMock()
+        mock_assignr_instance.get_game_ids.return_value = {
+            1: {'cancelled': False, 'game_report_url': None, 'home_roster': True, 'away_roster': False}
+        }
+        mock_assignr_instance.match_games_to_reports.return_value = mock_assignr_instance.get_game_ids.return_value
+        mock_assignr.return_value = mock_assignr_instance
+
+        mock_get_assignor_information.return_value = {
+            'association_1': [{'email': 'assignor1@example.com'}, {'email': 'assignor2@example.com'}]
+        }
+        
+        mock_create_message.return_value = 'Email Message'
+        mock_send_email.return_value = None  # No error
+
+        # Call the main function
+        main()
+
+        # Assertions
+        mock_get_arguments.assert_called_once()
+        mock_assignr_instance.get_game_ids.assert_called_once_with('2023-09-01', '2023-09-22')
+        mock_assignr_instance.match_games_to_reports.assert_called_once_with('2023-09-01', '2023-09-22', mock_assignr_instance.get_game_ids.return_value)
+        mock_create_message.assert_called()
+        mock_send_email.assert_called()
+
+    @patch('missing_game_reports.get_arguments')
+    def test_main_get_arguments_failure(self, mock_get_arguments, mock_logger):
+        # Mock get_arguments to simulate a failure (non-zero return code)
+        mock_get_arguments.return_value = (1, None)
+
+        # Call the main function and check exit behavior
+        with self.assertRaises(SystemExit) as cm:
+            from missing_game_reports import main  # Replace with actual import path
+            main()
+
+        # Assert that the script exits with the correct return code
+        self.assertEqual(cm.exception.code, 1)
+        mock_get_arguments.assert_called_once()
+        mock_logger.info.assert_called_with("Starting Missing Game Report")
+
+    @patch('missing_game_reports.get_arguments')
+    @patch('helpers.helpers.get_environment_vars')
+    def test_main_get_environment_vars_failure(self, mock_get_env_vars, mock_get_arguments):
+        # Mock get_arguments to return successfully
+        mock_get_arguments.return_value = (0, {'START_DATE': '2023-09-01', 'END_DATE': '2023-09-22', 'REFEREE_REMINDER': False})
+        
+        # Mock get_environment_vars to simulate a failure (non-zero return code)
+        mock_get_env_vars.return_value = (1, None)
+
+        # Call the main function and check exit behavior
+        with self.assertRaises(SystemExit) as cm:
+            from missing_game_reports import main  # Replace with actual import path
+            main()
+
+        # Assert that the script exits with the correct return code
+        self.assertEqual(cm.exception.code, 1)
+        mock_get_arguments.assert_called_once()
+        mock_get_env_vars.assert_called_once()
+
+    @patch('missing_game_reports.get_arguments')
+    @patch('helpers.helpers.get_environment_vars')
+    @patch('helpers.helpers.get_email_vars')
+    @patch('assignr.assignr.Assignr')
+    @patch('helpers.helpers.get_assignor_information')
+    @patch('helpers.helpers.create_message')
+    @patch('missing_game_reports.send_email')
+    def test_main_no_missing_reports(self, mock_send_email, mock_create_message, mock_get_assignor_information, mock_assignr, mock_get_email_vars, mock_get_env_vars, mock_get_arguments, mock_logger):
+        # Mock return values
+        mock_get_arguments.return_value = (0, {'START_DATE': '2023-09-01', 'END_DATE': '2023-09-22', 'REFEREE_REMINDER': False})
+        mock_get_env_vars.return_value = (0, {
+            'CLIENT_ID': 'client_id',
+            'CLIENT_SECRET': 'client_secret',
+            'CLIENT_SCOPE': 'scope',
+            'BASE_URL': 'base_url',
+            'AUTH_URL': 'auth_url'
+        })
+        mock_get_email_vars.return_value = (0, 'email_vars')
+        
+        # Mock Assignr instance
+        mock_assignr_instance = MagicMock()
+        mock_assignr_instance.get_game_ids.return_value = {
+            1: {'cancelled': False, 'game_report_url': 'http://report_url', 'home_roster': True, 'away_roster': True}
+        }
+        mock_assignr_instance.match_games_to_reports.return_value = mock_assignr_instance.get_game_ids.return_value
+        mock_assignr.return_value = mock_assignr_instance
+
+        mock_get_assignor_information.return_value = {
+            'association_1': [{'email': 'assignor1@example.com'}, {'email': 'assignor2@example.com'}]
+        }
+        
+        mock_create_message.return_value = 'Email Message'
+        mock_send_email.return_value = None  # No error
+
+        # Call the main function
+        from missing_game_reports import main  # Replace with actual import path
+        main()
+
+        # Assertions
+        mock_send_email.assert_called_once()  # No missing reports, so no second email should be sent
+        mock_create_message.assert_called()
+        mock_logger.info.assert_called_with("Completed Missing Game Report")
