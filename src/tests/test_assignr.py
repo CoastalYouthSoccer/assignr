@@ -147,127 +147,34 @@ class TestAssignr(TestCase):
         self.assertIsNone(temp.site_id)
         self.assertEqual(cm.output, ["ERROR:root:Response code 500 returned for get_site_id"])
 
-    @patch(ASSIGNR_REQUESTS)
-    def test_valid_referee_information(self, mock_requests):
-        mock_requests.post.return_value = mock_auth_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "id": 1234,
-            "last_name": "Mickey",
-            "first_name": "Mouse",
-            "mobile_phone": "(111) 222-3333",
-            "home_phone_is_public": "false",
-            "work_phone_is_public": "false",
-            "mobile_phone_is_public": "true",
-            "official": "true",
-            "assignor": "false",
-            "manager": "false",
-            "active": "true",
-            "email_addresses": [
-                "mickey.mouse@gmail.com"
-            ],
-            "created": "2023-11-05T15:07:42.000-05:00",
-            "updated": "2024-02-01T19:55:00.000-05:00",
-            "_links": {
-                "self": {
-                    "resource-type": "user",
-                    "href": "https://api.assignr.com/api/v2/users/1234.json"
-                },
-                "avatar_square": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=300"
-                },
-                "games": {
-                    "href": "https://api.assignr.com/api/v2/users/1234/games.json"
-                },
-                "avatar_original": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=800"
-                },
-                "avatar_icon": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=64"
-                }
+    def test_get_referees_by_availability(self):
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        temp.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
             },
-            "_embedded": {
-                "site": {
-                    "id": 1234,
-                    "name": "Soccer League",
-                    "created": "2023-01-19T19:19:43.000-05:00",
-                    "updated": "2024-02-01T00:02:13.000-05:00",
-                    "_links": {
-                        "self": {
-                            "resource-type": "site",
-                            "href": "https://api.assignr.com/api/v2/sites/1234.json"
-                        }
-                    }
-                }
+            12761: {
+                'first_name': 'Homer',
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']                
             }
         }
-
-        mock_requests.get.return_value = mock_response
-
-        expected_result = {
-            "last_name": "Mickey",
-            "first_name": "Mouse",
-            "active": "true",
-            "official": "true",
-            "assignor": "false",
-            "manager": "false",
-            "email_addresses": [
-                "mickey.mouse@gmail.com"
-            ]
-        }
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
-        result = temp.get_referee_information('referee')
-        self.assertEqual(result, expected_result)
-
-    @patch(ASSIGNR_REQUESTS)
-    def test_invalid_referee_information(self, mock_requests):
-        expected_result = {
-            'first_name': None,
-            'last_name': None,
-            'email_addresses': [],
-            'official': None,
-            'assignor': None,
-            'manager': None,
-            'active': None
-        }
-        mock_requests.post.return_value = mock_auth_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.json.return_value = {}
-
-        mock_requests.get.return_value = mock_response
-
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
-        with self.assertLogs(level='INFO') as cm:
-            result = temp.get_referee_information('referee')
-        self.assertEqual(cm.output, ["ERROR:root:Failed to get referee information: 500"])
-        self.assertEqual(result, expected_result)
-
-    def test_get_referees_by_availability(self):
         expected_result = [
             {
                 'accepted': 'false',
                 'position': 'Referee',
-                'first_name': None,
-                'last_name': None
-            }, {
-                'accepted': 'false',
-                'position': 'Referee',
                 'first_name': 'Mickey',
-                'last_name': 'Mouse'
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
             }, {
                 'accepted': 'true',
                 'position': 'Scorekeeper',
                 'first_name': 'Homer',
-                'last_name': 'Simpson'
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']
             }
         ]
         payload = [
@@ -328,8 +235,7 @@ class TestAssignr(TestCase):
                 }
             }
         }]
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
+ 
         referees = temp.get_referees_by_assignments(payload)
         self.assertEqual(referees, expected_result)
 
@@ -512,74 +418,6 @@ class TestAssignr(TestCase):
             ["ERROR:assignr.assignr:Key: 'all_day', missing from Availability response"])
         self.assertEqual(result, [])
 
-    @patch(ASSIGNR_REQUESTS)
-    def test_valid_get_referee_information(self, mock_requests):
-        mock_requests.post.return_value = mock_auth_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "id": 123,
-            "last_name": "Simpson",
-            "first_name": "Homer",
-            "city": "Springfield",
-            "state": "MA",
-            "postal_code": "02025",
-            "official": True,
-            "assignor": False,
-            "manager": False,
-            "active": True,
-            "email_addresses": ["hsimpson@springfield.com"]
-        }
-        mock_requests.get.return_value = mock_response
-
-        expected_result = {
-            'first_name': 'Homer',
-            'last_name': 'Simpson',
-            'email_addresses': ['hsimpson@springfield.com']
-        }
-        payload = [
-            {
-                "position": "Referee",
-                "position_abbreviation": "R",
-                "_embedded": {
-                    "official": {
-                        "id": 123,
-                        "last_name": "Simpson",
-                        "first_name": "Homer"
-                    }
-                }
-            },
-            {
-                "position": "Asst. Referee",
-                "position_abbreviation": "AR",
-                "_embedded": {
-                    "official": {
-                        "id": 1234,
-                        "last_name": "Simpson",
-                        "first_name": "Marge"
-                    }
-                }
-            },
-            {
-                "position": "Asst. Referee",
-                "position_abbreviation": "AR",
-                "_embedded": {
-                    "official": {
-                        "id": 4321,
-                        "last_name": "Simpson",
-                        "first_name": "Bart"
-                    }
-                }
-            }
-        ]
-
-
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
-        result = temp.get_center_referee_game(payload)
-        self.assertEqual(result, expected_result)
-
 
 class TestGetGameIds(TestCase):
 
@@ -688,19 +526,26 @@ class TestGameInformation(TestCase):
     def setUp(self):
         self.instance = Assignr('123', '234', '345', BASE_URL,
                        AUTH_URL)
-
-    @patch.object(Assignr, 'get_referee_information')
-    @patch.object(Assignr, 'get_referees_by_assignments')
-    def test_get_game_information(self, mock_get_referees_by_assignments,
-                                mock_get_referee_information):
-        # Prepare mock return values for assignor and referees
-        mock_get_referee_information.return_value = {'id': 123, 'name': 'John Doe'}
-        mock_get_referees_by_assignments.return_value = [
-            {'id': 1, 'name': 'Referee A'},
-            {'id': 2, 'name': 'Referee B'}
-        ]
-        
-        # Create a sample payload that the function expects
+        self.instance.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
+            },
+            12761: {
+                'first_name': 'Homer',
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']                
+            }
+        }
+        self.instance.assignors = {
+            123: {
+                'first_name': 'Marge',
+                'last_name': 'Simpson',
+                'email_addresses': ['marge@springfield.simpson']                
+            }
+        }
+    def test_get_game_information(self):
         payload = {
             "id": 101,
             "localized_date": "2024-09-01",
@@ -715,7 +560,17 @@ class TestGameInformation(TestCase):
             "cancelled": False,
             "_embedded": {
                 "assignor": {"id": 123},
-                "assignments": [{'role': 'Referee'}, {'role': 'Assistant Referee'}],
+                "assignments": [
+                    {
+                        'position': 'Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12656}}
+                    }, {
+                        'position': 'Assistant Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12761}}
+                    }
+                ],
                 "venue": "Stadium A"
             },
             "subvenue": "Field 2"
@@ -723,10 +578,6 @@ class TestGameInformation(TestCase):
 
         # Call the method under test
         result = self.instance.get_game_information(payload)
-
-        # Assert that the mock methods were called with the correct arguments
-        mock_get_referee_information.assert_called_once_with('/users/123')
-        mock_get_referees_by_assignments.assert_called_once_with([{'role': 'Referee'}, {'role': 'Assistant Referee'}])
 
         # Assert that the result matches the expected output
         expected_result = {
@@ -744,17 +595,21 @@ class TestGameInformation(TestCase):
             'game_type': 'Friendly',
             'cancelled': False,
             'referees': [
-                {'id': 1, 'name': 'Referee A'},
-                {'id': 2, 'name': 'Referee B'}
+                {'accepted': True, 'position': 'Referee',
+                 'first_name': 'Mickey', 'last_name': 'Mouse',
+                 'email_addresses': ['mickey@disney.mouse']},
+                {'accepted': True, 'position': 'Assistant Referee',
+                 'first_name': 'Homer', 'last_name': 'Simpson',
+                 'email_addresses': ['homer@springfield.simpson']}
             ],
-            'assignor': {'id': 123, 'name': 'John Doe'}
+            'assignor': {'first_name': 'Marge', 'last_name': 'Simpson',
+                         'email_addresses': ['marge@springfield.simpson']}
         }
 
         self.assertEqual(result, expected_result)
 
-    @patch.object(Assignr, 'get_referee_information')
     @patch.object(Assignr, 'get_referees_by_assignments')
-    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments, mock_get_referee_information):
+    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments):
         # Prepare a payload with missing keys to simulate a KeyError
         payload = {
             "id": 101,

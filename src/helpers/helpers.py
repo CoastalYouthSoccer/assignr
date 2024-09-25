@@ -165,6 +165,24 @@ def get_assignor_information():
 
     return results
 
+def get_center_referee_info(payload):
+    referee = {
+        'first_name': None,
+        'last_name': None,
+        'email_addresses': []
+    }
+
+    try:
+        for official in payload:
+            if official['position'] == 'Referee':
+                referee['first_name'] = official['first_name']
+                referee['last_name'] = official['last_name']
+                referee['email_addresses'] = official['email_addresses']
+    except KeyError as ke:
+        logging.error(f"Key: {ke}, missing from Get Referee response")
+            
+    return referee
+    
 def get_environment_vars():
     rc = 0
     env_vars = {

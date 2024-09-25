@@ -178,10 +178,8 @@ class TestMainFunction(TestCase):
         mock_create_message.return_value = 'Email Message'
         mock_send_email.return_value = None  # No error
 
-        # Call the main function
         main()
 
-        # Assertions
         mock_get_arguments.assert_called_once()
         mock_assignr_instance.get_game_ids.assert_called_once_with('2023-09-01', '2023-09-22')
         mock_assignr_instance.match_games_to_reports.assert_called_once_with('2023-09-01', '2023-09-22', mock_assignr_instance.get_game_ids.return_value)
@@ -189,32 +187,23 @@ class TestMainFunction(TestCase):
         mock_send_email.assert_called()
 
     @patch('missing_game_reports.get_arguments')
-    def test_main_get_arguments_failure(self, mock_get_arguments, mock_logger):
-        # Mock get_arguments to simulate a failure (non-zero return code)
+    def test_main_get_arguments_failure(self, mock_get_arguments):
         mock_get_arguments.return_value = (1, None)
 
-        # Call the main function and check exit behavior
         with self.assertRaises(SystemExit) as cm:
-            from missing_game_reports import main  # Replace with actual import path
             main()
 
-        # Assert that the script exits with the correct return code
         self.assertEqual(cm.exception.code, 1)
         mock_get_arguments.assert_called_once()
-        mock_logger.info.assert_called_with("Starting Missing Game Report")
 
     @patch('missing_game_reports.get_arguments')
     @patch('helpers.helpers.get_environment_vars')
     def test_main_get_environment_vars_failure(self, mock_get_env_vars, mock_get_arguments):
-        # Mock get_arguments to return successfully
         mock_get_arguments.return_value = (0, {'START_DATE': '2023-09-01', 'END_DATE': '2023-09-22', 'REFEREE_REMINDER': False})
         
-        # Mock get_environment_vars to simulate a failure (non-zero return code)
         mock_get_env_vars.return_value = (1, None)
 
-        # Call the main function and check exit behavior
         with self.assertRaises(SystemExit) as cm:
-            from missing_game_reports import main  # Replace with actual import path
             main()
 
         # Assert that the script exits with the correct return code
@@ -256,8 +245,6 @@ class TestMainFunction(TestCase):
         mock_create_message.return_value = 'Email Message'
         mock_send_email.return_value = None  # No error
 
-        # Call the main function
-        from missing_game_reports import main  # Replace with actual import path
         main()
 
         # Assertions

@@ -21,6 +21,8 @@ class Assignr:
         self.auth_url = auth_url
         self.site_id = None
         self.token = None
+        self.referees = {}
+        self.assignors = {}
 
     def authenticate(self) -> None:
         form_data = {
@@ -64,79 +66,75 @@ class Assignr:
             response = requests.get(f"{self.base_url}{end_point}", headers=headers, params=params)
         return response.status_code, response.json()
 
-    def get_referees_by_assignments(self, payload):
-        referees = []
-        first_name = None
-        last_name = None
-        for official in payload:
-            if '_embedded' in official and \
-                'official' in official['_embedded']:
-                first_name = official['_embedded']['official']['first_name']
-                last_name = official['_embedded']['official']['last_name']
-            referees.append({
-                'accepted': official['accepted'],
-                'position': official['position'],
-                'first_name': first_name,
-                'last_name': last_name
-            })
-        return referees
+    def load_referees_assignors(self):
+        self.referees = {}
+        self.assignors = {}
+        page_nbr = 1
+        more_rows = True
 
-    def get_center_referee_game(self, payload):
-        referee = {
-            'first_name': None,
-            'last_name': None,
-            'email_addresses': []
-        }
-
-        try:
-            for official in payload:
-                if official['position'] == 'Referee':
-                    referee_id = official['_embedded']['official']['id']
-                    referee_info = self.get_referee_information(f"/users/{referee_id}")
-                    referee['first_name'] = referee_info['first_name']
-                    referee['last_name'] = referee_info['last_name']
-                    referee['email_addresses'] = referee_info['email_addresses']
-        except KeyError as ke:
-            logging.error(f"Key: {ke}, missing from Get Referee response")
-            
-        return referee
-    
-    def get_referee_information(self, endpoint):
         if not self.token:
             self.authenticate()
 
-        referee = {
-            'first_name': None,
-            'last_name': None,
-            'email_addresses': [],
-            'official': None,
-            'assignor': None,
-            'manager': None,
-            'active': None          
-        }
+        if self.site_id is None:
+            self.get_site_id()
 
-        status_code, response = self.get_requests(endpoint)
+        while more_rows:
+            params = {
+                'page': page_nbr
+            }
+            status_code, response = self.get_requests(f'sites/{self.site_id}/users',
+                                                      params=params)    
+            if status_code != 200:
+                logging.error(f'Failed to get users: {status_code}')
+                more_rows = False
+                return
 
-        if status_code != 200:
-            logging.error(f'Failed to get referee information: {status_code}')
-            return referee
+            try:
+                total_pages = response['page']['pages']
+                for user in response['_embedded']['users']:
+                    if user['official']:
+                        self.referees[user['id']] = {
+                            'first_name': user['first_name'],
+                            'last_name': user['last_name'],
+                            'email_addresses': user['email_addresses']
+                        }
+                    if user['assignor']:
+                        self.assignors[user['id']] = {
+                            'first_name': user['first_name'],
+                            'last_name': user['last_name'],
+                            'email_addresses': user['email_addresses']
+                        }
+            except KeyError as ke:
+                logging.error(f"Key: {ke}, missing from Users response")
 
-        referee = {
-            'first_name': response['first_name'],
-            'last_name': response['last_name'],
-            'email_addresses': response['email_addresses'],
-            'official': response['official'],
-            'assignor': response['assignor'],
-            'manager': response['manager'],
-            'active': response['active']
-        }
+            page_nbr += 1
+            if page_nbr > total_pages:
+                more_rows = False
 
-        return referee
+    def get_referees_by_assignments(self, payload):
+        referees = []
+
+        try:
+            for official in payload:
+                if '_embedded' in official and \
+                    'official' in official['_embedded'] and \
+                    'id' in official['_embedded']['official']:
+                    referee_info = self.referees[official['_embedded']['official']['id']]
+                    referees.append({
+                        'accepted': official['accepted'],
+                        'position': official['position'],
+                        'first_name': referee_info['first_name'],
+                        'last_name': referee_info['last_name'],
+                        'email_addresses': referee_info['email_addresses']
+                    })
+        except KeyError as ke:
+            logging.error(f"Key: {ke}, missing from Referee")
+        return referees
 
     def get_game_information(self, payload):
         try:
             sub_item = payload["_embedded"]
-            assignor = self.get_referee_information(f"/users/{sub_item['assignor']['id']}")
+            assignor = self.assignors[sub_item['assignor']['id']]
             referees = self.get_referees_by_assignments(sub_item['assignments'])
             sub_venue = payload["subvenue"] if "subvenue" in payload else None
 

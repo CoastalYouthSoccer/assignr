@@ -373,16 +373,6 @@ class TestHelpers(TestCase):
 #            {'no_show': False, 'position': 'Referee', 'first_name': 'Mickey', 'last_name': 'Mouse'},
 #
 #        ]
-#        assignr_mock = MagicMock()
-#        assignr_mock.get_referee_information(return_value = {
-#            'first_name': 'Mickey',
-#            'last_name': 'Mouse',
-#            'email_addresses': 'test@example.com',
-#            'official': 'test official',
-#            'assignor': 'test assignor',
-#            'manager': 'test manager',
-#            'active': 'true'           
-#        })
 #        temp = Assignr('123', '234', '345', BASE_URL,
 #                       AUTH_URL)
 #        with patch('assignr.assignr.Assignr', return_value=assignr_mock):

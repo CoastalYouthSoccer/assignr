@@ -7,7 +7,8 @@ from datetime import (datetime, timedelta)
 
 from assignr.assignr import Assignr
 from helpers.helpers import (get_environment_vars, get_email_vars,
-                             create_message, get_assignor_information)
+                             create_message, get_center_referee_info,
+                             get_assignor_information)
 from helpers.email import EMailClient
 from helpers import constants
 
@@ -94,6 +95,17 @@ def send_email(email_vars, subject, message, send_to):
     return email_client.send_email(subject, message,
                                    send_to, True)
 
+def send_referee_reminder(game, email_vars, subject):
+    center_referee = get_center_referee_info(game['referees'])
+    assignor_addresses = game['assignor']['email_addresses']
+    email_addresses = ",".join(center_referee['email_addresses'] + assignor_addresses)
+    message = create_message(game, 'missing_referee_report.html.jinja')
+
+    response = send_email(email_vars, subject, message,
+                          email_addresses)
+    if response:
+        logger.error(response)
+
 def main():
     logger.info("Starting Missing Game Report")
     rc, args = get_arguments(argv[1:])
@@ -120,6 +132,8 @@ def main():
         for assignor in assignors[association]:
             assignor_emails.append(assignor['email'])
 
+    assignr.load_referees_assignors()
+
     games = assignr.get_game_ids(args[START_DATE],
                                     args[END_DATE])
     games = assignr.match_games_to_reports(args[START_DATE],
@@ -130,21 +144,11 @@ def main():
              f' - {args[END_DATE].strftime("%m/%d/%Y")}'
 
     for game in games.values():
-# If the rosters or report are missing
-# If this is a reminder send to the CR and the assignor
-# if this is EOW report send to ????
         if not game['cancelled'] and (game['game_report_url'] is None or \
             not game['home_roster'] or not game['away_roster']): 
             game_reports.append(game)
-            if args[REFEREE_REMINDER]:
-#                email_addresses = ",".join(game['referee']['email_addresses']).join(game['assignor']['email_addresses'])
-                message = create_message(game, 'missing_referee_report.html.jinja')
-                email_addresses = ",".join(["pwhite@delpwhite.org"])
-
-#                response = send_email(email_vars, subject, message,
-#                          email_addresses)
-#                if response:
-#                    logger.error(response)
+#            if args[REFEREE_REMINDER]:
+#                send_referee_reminder(game, email_vars, subject)
 
     content = {'reports': game_reports}
     message = create_message(content, 'missing_report.html.jinja')
