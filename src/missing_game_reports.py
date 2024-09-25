@@ -147,14 +147,14 @@ def main():
         if not game['cancelled'] and (game['game_report_url'] is None or \
             not game['home_roster'] or not game['away_roster']): 
             game_reports.append(game)
-#            if args[REFEREE_REMINDER]:
-#                send_referee_reminder(game, email_vars, subject)
+            if args[REFEREE_REMINDER]:
+                send_referee_reminder(game, email_vars, subject)
 
     content = {'reports': game_reports}
     message = create_message(content, 'missing_report.html.jinja')
-    email_addresses = ",".join(["pwhite@delpwhite.org"])
 
-    response = send_email(email_vars, subject, message, email_addresses)
+    response = send_email(email_vars, subject, message,
+                          email_vars[constants.ADMIN_EMAIL])
     if response:
         logger.error(response)
     logger.info("Completed Missing Game Report")
