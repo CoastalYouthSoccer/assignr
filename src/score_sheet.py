@@ -57,6 +57,9 @@ def get_arguments(args):
         logger.error(f"End Date value, {arguments['end_date']} is invalid")
         rc = 88
 
+    if arguments['start_date'] > arguments['end_date']:
+        logger.error(f"Start Date, {arguments['start_date']}, occurs AFTER End Date:{arguments['end_date']}")
+        rc = 77
     if arguments['game_type'] is None:
         arguments['game_type'] = 'Futsal'
         logger.info('Game Type not provided, defaulting to "Futsal"')

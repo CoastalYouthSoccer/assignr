@@ -1,0 +1,39 @@
+{%- set ns = namespace(cr_name=none) -%}
+{%- for referee in referees -%}
+    {%- if referee['position'] == 'Referee' -%}
+        {%- set ns.cr_name = referee['first_name'] -%}
+    {%- endif %}
+{%- endfor -%}
+
+{%- if ns.cr_name -%}
+Hi {{ ns.cr_name }},
+{%- else -%}
+Hi Referee,
+{%- endif -%}
+{%- if game_report_url is none -%}
+<p>You need to complete a game report for the following game.</p>
+<h2>Game Information</h2>
+<table>
+  <tr>
+    <td><b>Date/Time:</b></td>
+    <td>{{ game_date }} @ {{ game_time }}</td>
+  </tr>
+  <tr>
+    <td><b>Age Group/Gender:</b></td>
+    <td>{{ age_group }} / {{ gender }}</td>
+  </tr>
+  <tr>
+    <td><b>Venue:</b></td>
+    <td>{{ venue['name'] }} - {{ sub_venue }}</td>
+  </tr>
+</table> 
+{%- else -%}
+{%- if not home_roster -%}
+<p>Please upload the missing home roster for <a href="{{ game_report_url }}">Game Report</a>.</p>
+{%- endif -%}
+
+{%- if not away_roster -%}
+<p>Please upload the missing away roster for <a href="{{ game_report_url }}">Game Report</a>.</p>
+{%- endif -%}
+{%- endif -%}
+

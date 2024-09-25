@@ -1,13 +1,19 @@
 from os import (environ, path)
+import re
 
-import dateutil.parser
+from dateutil import parser
 import logging
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import csv
 from google import auth
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from helpers import constants
+from helpers.constants import ADMIN_EMAIL, ADMIN_NARRATIVE, ADMIN_REVIEW, \
+    AUTH_URL, ASSIGNOR_CSV_FILE, BASE_URL, CLIENT_ID, CLIENT_SECRET, \
+    CLIENT_SCOPE, CREW_CHANGES, EMAIL_PASSWORD, EMAIL_PORT, \
+    EMAIL_SERVER, EMAIL_USERNAME, GOOGLE_APPLICATION_CREDENTIALS, \
+    MISCONDUCTS_EMAIL, NARRATIVE, NOT_ASSIGNED, SPREADSHEET_ID, \
+    SPREADSHEET_RANGE, START_TIME
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +34,11 @@ def format_date_yyyy_mm_dd(date) -> str:
 def format_str_mm_dd_yyyy(date_str) -> str:
     formatted_date = None
     try:
-        dt = dateutil.parser.parse(date_str)
+        dt = parser.parse(date_str)
         formatted_date = dt.strftime("%m/%d/%Y")
-    except dateutil.parser.ParserError:
+    except parser.ParserError:
         logger.error(f"Failed to parse date: {date_str}")
-    except dateutil.parser.UnknownTimezoneWarning:
+    except parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date_str}")
     except Exception as e:
         logger.error(f"Unknown error: {e}")
@@ -41,11 +47,11 @@ def format_str_mm_dd_yyyy(date_str) -> str:
 def format_str_hh_mm(date_str) -> str:
     formatted_time = None
     try:
-        dt = dateutil.parser.parse(date_str)
+        dt = parser.parse(date_str)
         formatted_time = dt.strftime("%I:%M %p")
-    except dateutil.parser.ParserError:
+    except parser.ParserError:
         logger.error(f"Failed to parse date: {date_str}")
-    except dateutil.parser.UnknownTimezoneWarning:
+    except parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date_str}")
     except Exception as e:
         logger.error(f"Unknown error: {e}")
@@ -55,9 +61,9 @@ def format_date_mm_dd_yyyy(date) -> str:
     formatted_date = None
     try:
         formatted_date = date.strftime("%m/%d/%Y")
-    except dateutil.parser.ParserError:
+    except parser.ParserError:
         logger.error(f"Failed to parse date: {date}")
-    except dateutil.parser.UnknownTimezoneWarning:
+    except parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date}")
     except Exception as e:
         logger.error(f"Unknown error: {e}")
@@ -67,9 +73,9 @@ def format_date_hh_mm(date) -> str:
     formatted_time = None
     try:
         formatted_time = date.strftime("%I:%M %p")
-    except dateutil.parser.ParserError:
+    except parser.ParserError:
         logger.error(f"Failed to parse date: {date}")
-    except dateutil.parser.UnknownTimezoneWarning:
+    except parser.UnknownTimezoneWarning:
         logger.error(f"Invalid Time zone: {date}")
     except Exception as e:
         logger.error(f"Unknown error: {e}")
@@ -139,7 +145,7 @@ def get_assignor_information():
     results = {}
 
     try:
-        with open(environ[constants.ASSIGNOR_CSV_FILE], 'r') as csv_file:
+        with open(environ[ASSIGNOR_CSV_FILE], 'r') as csv_file:
             reader = csv.reader(csv_file)
             for row in reader:
                 if row[0] in results:
@@ -151,52 +157,70 @@ def get_assignor_information():
                         'email': f'{row[2]} {row[1]}<{row[3]}>'
                     }]
     except KeyError:
-        logger.error(f"{constants.ASSIGNOR_CSV_FILE} environment variable not provided")
+        logger.error(f"{ASSIGNOR_CSV_FILE} environment variable not provided")
         return results
     except FileNotFoundError:
-        logger.error(f"{environ[constants.ASSIGNOR_CSV_FILE]} Not Found!")
+        logger.error(f"{environ[ASSIGNOR_CSV_FILE]} Not Found!")
         return results
 
     return results
 
-def get_environment_vars():
-    rc = 0
-    env_vars = {
-        constants.CLIENT_SECRET: None,
-        constants.CLIENT_ID: None,
-        constants.CLIENT_SCOPE: None,
-        constants.AUTH_URL: None,
-        constants.BASE_URL: None
+def get_center_referee_info(payload):
+    referee = {
+        'first_name': None,
+        'last_name': None,
+        'email_addresses': []
     }
 
     try:
-        env_vars[constants.CLIENT_SECRET] = environ[constants.CLIENT_SECRET]
+        for official in payload:
+            if official['position'] == 'Referee':
+                referee['first_name'] = official['first_name']
+                referee['last_name'] = official['last_name']
+                referee['email_addresses'] = official['email_addresses']
+    except KeyError as ke:
+        logging.error(f"Key: {ke}, missing from Get Referee response")
+            
+    return referee
+    
+def get_environment_vars():
+    rc = 0
+    env_vars = {
+        CLIENT_SECRET: None,
+        CLIENT_ID: None,
+        CLIENT_SCOPE: None,
+        AUTH_URL: None,
+        BASE_URL: None
+    }
+
+    try:
+        env_vars[CLIENT_SECRET] = environ[CLIENT_SECRET]
     except KeyError:
-        logger.error(f'{constants.CLIENT_SECRET} environment variable is missing')
+        logger.error(f'{CLIENT_SECRET} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[constants.CLIENT_ID] = environ[constants.CLIENT_ID]
+        env_vars[CLIENT_ID] = environ[CLIENT_ID]
     except KeyError:
-        logger.error(f'{constants.CLIENT_ID} environment variable is missing')
+        logger.error(f'{CLIENT_ID} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[constants.CLIENT_SCOPE] = environ[constants.CLIENT_SCOPE]
+        env_vars[CLIENT_SCOPE] = environ[CLIENT_SCOPE]
     except KeyError:
-        logger.error(f'{constants.CLIENT_SCOPE} environment variable is missing')
+        logger.error(f'{CLIENT_SCOPE} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[constants.AUTH_URL] = environ[constants.AUTH_URL]
+        env_vars[AUTH_URL] = environ[AUTH_URL]
     except KeyError:
-        logger.error(f'{constants.AUTH_URL} environment variable is missing')
+        logger.error(f'{AUTH_URL} environment variable is missing')
         rc = 66
 
     try:
-        env_vars[constants.BASE_URL] = environ[constants.BASE_URL]
+        env_vars[BASE_URL] = environ[BASE_URL]
     except KeyError:
-        logger.error(f'{constants.BASE_URL} environment variable is missing')
+        logger.error(f'{BASE_URL} environment variable is missing')
         rc = 66
 
     return rc, env_vars
@@ -204,28 +228,28 @@ def get_environment_vars():
 def get_spreadsheet_vars():
     rc = 0
     env_vars = {
-        constants.SPREADSHEET_ID: None,
-        constants.SPREADSHEET_RANGE: None,
-        constants.GOOGLE_APPLICATION_CREDENTIALS: None
+        SPREADSHEET_ID: None,
+        SPREADSHEET_RANGE: None,
+        GOOGLE_APPLICATION_CREDENTIALS: None
     }
 
     try:
-        env_vars[constants.GOOGLE_APPLICATION_CREDENTIALS] = \
-            environ[constants.GOOGLE_APPLICATION_CREDENTIALS]
+        env_vars[GOOGLE_APPLICATION_CREDENTIALS] = \
+            environ[GOOGLE_APPLICATION_CREDENTIALS]
     except KeyError:
-        logger.error(f'{constants.GOOGLE_APPLICATION_CREDENTIALS} environment variable is missing')
+        logger.error(f'{GOOGLE_APPLICATION_CREDENTIALS} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[constants.SPREADSHEET_ID] = environ[constants.SPREADSHEET_ID]
+        env_vars[SPREADSHEET_ID] = environ[SPREADSHEET_ID]
     except KeyError:
-        logger.error(f'{constants.SPREADSHEET_ID} environment variable is missing')
+        logger.error(f'{SPREADSHEET_ID} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[constants.SPREADSHEET_RANGE] = environ[constants.SPREADSHEET_RANGE]
+        env_vars[SPREADSHEET_RANGE] = environ[SPREADSHEET_RANGE]
     except KeyError:
-        logger.error(f'{constants.SPREADSHEET_RANGE} environment variable is missing')
+        logger.error(f'{SPREADSHEET_RANGE} environment variable is missing')
         rc = 55
 
     return rc, env_vars
@@ -233,49 +257,145 @@ def get_spreadsheet_vars():
 def get_email_vars():
     rc = 0
     env_vars = {
-        constants.EMAIL_SERVER: 'smtp.gmail.com',
-        constants.EMAIL_PORT: 587,
-        constants.EMAIL_USERNAME: None,
-        constants.EMAIL_PASSWORD: None,
-        constants.ADMIN_EMAIL: None,
-        constants.MISCONDUCTS_EMAIL: None
+        EMAIL_SERVER: 'smtp.gmail.com',
+        EMAIL_PORT: 587,
+        EMAIL_USERNAME: None,
+        EMAIL_PASSWORD: None,
+        ADMIN_EMAIL: None,
+        MISCONDUCTS_EMAIL: None
     }
 
     try:
-        env_vars[constants.EMAIL_SERVER] = environ[constants.EMAIL_SERVER]
+        env_vars[EMAIL_SERVER] = environ[EMAIL_SERVER]
     except KeyError:
-        logger.info(f'{constants.EMAIL_SERVER} environment variable is missing, defaulting to "smtp.gmail.com"')
+        logger.info(f'{EMAIL_SERVER} environment variable is missing, defaulting to "smtp.gmail.com"')
 
     try:
-        env_vars[constants.EMAIL_PORT] = int(environ[constants.EMAIL_PORT])
+        env_vars[EMAIL_PORT] = int(environ[EMAIL_PORT])
     except KeyError:
-        logger.info(f'{constants.EMAIL_PORT} environment variable is missing, defaulting to 587')
+        logger.info(f'{EMAIL_PORT} environment variable is missing, defaulting to 587')
     except ValueError:
-        logger.error(f'{constants.EMAIL_PORT} environment variable is not an integer')
+        logger.error(f'{EMAIL_PORT} environment variable is not an integer')
         rc = 55
 
     try:
-        env_vars[constants.EMAIL_USERNAME] = environ[constants.EMAIL_USERNAME]
+        env_vars[EMAIL_USERNAME] = environ[EMAIL_USERNAME]
     except KeyError:
-        logger.error(f'{constants.EMAIL_USERNAME} environment variable is missing')
+        logger.error(f'{EMAIL_USERNAME} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[constants.EMAIL_PASSWORD] = environ[constants.EMAIL_PASSWORD]
+        env_vars[EMAIL_PASSWORD] = environ[EMAIL_PASSWORD]
     except KeyError:
-        logger.error(f'{constants.EMAIL_PASSWORD} environment variable is missing')
+        logger.error(f'{EMAIL_PASSWORD} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[constants.ADMIN_EMAIL] = environ[constants.ADMIN_EMAIL]
+        env_vars[ADMIN_EMAIL] = environ[ADMIN_EMAIL]
     except KeyError:
-        logger.error(f'{constants.ADMIN_EMAIL} environment variable is missing')
+        logger.error(f'{ADMIN_EMAIL} environment variable is missing')
         rc = 55
 
     try:
-        env_vars[constants.MISCONDUCTS_EMAIL] = environ[constants.MISCONDUCTS_EMAIL]
+        env_vars[MISCONDUCTS_EMAIL] = environ[MISCONDUCTS_EMAIL]
     except KeyError:
-        logger.error(f'{constants.MISCONDUCTS_EMAIL} environment variable is missing')
+        logger.error(f'{MISCONDUCTS_EMAIL} environment variable is missing')
         rc = 55
 
     return rc, env_vars
+
+
+def get_match_count(data, match):
+    pattern = re.compile(match)
+
+    return sum(1 for key in data.keys() if pattern.match(key))
+
+def get_coaches_name(coaches, age_group, gender, team):
+    try:
+        return coaches[age_group][gender][team]
+    except KeyError:
+        return 'Unknown' 
+
+def get_referees(payload):
+    pattern = r'\.officials\.\d+\.position'
+    found_cnt = get_match_count(payload, pattern)
+    results = []
+    for cnt in range(found_cnt):
+        results.append({
+            "name": payload[f'.officials.{cnt}.name'],
+            "position": payload[f'.officials.{cnt}.position']
+        })
+
+# Make sure three referees are in the dictionary. Assumes missing positions are ARs
+    for cnt in range(found_cnt, 3):
+        results.append({
+            "name": NOT_ASSIGNED,
+            "position": "Asst. Referee"
+        })
+    return results
+
+def get_misconducts(payload):
+    pattern = r'\.misconductGrid\.\d+\.name'
+    found_cnt = get_match_count(payload, pattern)
+    results = []
+    for cnt in range(found_cnt):
+        results.append({
+            "name": payload[f'.misconductGrid.{cnt}.name'],
+            "role": payload[f'.misconductGrid.{cnt}.role'],
+            "team": payload[f'.misconductGrid.{cnt}.team'],
+            "minute": payload[f'.misconductGrid.{cnt}.minute'],
+            "offense": payload[f'.misconductGrid.{cnt}.offense'],
+            "description": payload[f'.misconductGrid.{cnt}.description'],
+            "pass_number": payload[f'.misconductGrid.{cnt}.passIdNumber'],
+            "caution_send_off": payload[f'.misconductGrid.{cnt}.cautionSendOff']
+        })
+
+    return results
+
+def process_game_report(data):
+    result = None
+    if ADMIN_REVIEW not in data:
+        if data[NARRATIVE]:
+            data[ADMIN_REVIEW] = 'True'
+        else:
+            data[ADMIN_REVIEW] = None
+
+    if ADMIN_NARRATIVE not in data:
+        data[ADMIN_NARRATIVE] = None
+
+    if CREW_CHANGES not in data:
+        data[CREW_CHANGES] = None
+
+    try:
+        if NARRATIVE in data:
+            narrative = data[NARRATIVE]
+        else:
+            narrative = None
+        result = {
+            "admin_review": set_boolean_value(data[ADMIN_REVIEW]),
+            "misconduct": set_boolean_value(data['.misconductCheckbox']),
+            'assignments_correct': set_boolean_value(data['.assignmentsCorrect']),
+            'home_team_score': data['.homeTeamScore'],
+            'away_team_score': data['.awayTeamScore'],
+            'officials': get_referees(data),
+            'author': data['.author_name'],
+            'game_dt': data[START_TIME],
+            'home_team': data['.homeTeam'],
+            'away_team': data['.awayTeam'],
+            'venue_subvenue': data['.venue'],
+            'league': data['.league'],
+            'age_group': data['.ageGroup'],
+            'gender': data['.gender'],
+            'misconducts': get_misconducts(data),
+            'home_coach': 'Unknown',
+            'away_coach': 'Unknown',
+            'narrative': narrative,
+            'ejections': set_boolean_value(data['.ejections']),
+            'admin_narrative': data[ADMIN_NARRATIVE],
+            'crewChanges': data[CREW_CHANGES]
+        }
+
+    except KeyError as ke:
+        logging.error(f"Key: {ke}, missing from process_game_report")
+
+    return result

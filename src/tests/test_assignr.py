@@ -1,16 +1,14 @@
 from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
-from assignr.assignr import (Assignr, get_game_information, get_referees,
-                             get_match_count, get_misconducts)
+from assignr.assignr import Assignr
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
 AUTH_URL = "https://auth.com"
 ASSIGNR_REQUESTS ="assignr.assignr.requests"
 CONST_DATE_2022_01_01 = datetime(2022,1,1,0,0,0,0)
-NOT_ASSIGNED = "Not Assigned"
-ASST_REFEREE = "Asst. Referee"
+
 
 mock_auth_response = MagicMock()
 mock_auth_response.status_code = 200
@@ -149,118 +147,34 @@ class TestAssignr(TestCase):
         self.assertIsNone(temp.site_id)
         self.assertEqual(cm.output, ["ERROR:root:Response code 500 returned for get_site_id"])
 
-    @patch(ASSIGNR_REQUESTS)
-    def test_valid_referee_information(self, mock_requests):
-        mock_requests.post.return_value = mock_auth_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "id": 1234,
-            "last_name": "Mickey",
-            "first_name": "Mouse",
-            "mobile_phone": "(111) 222-3333",
-            "home_phone_is_public": "false",
-            "work_phone_is_public": "false",
-            "mobile_phone_is_public": "true",
-            "official": "true",
-            "assignor": "false",
-            "manager": "false",
-            "active": "true",
-            "email_addresses": [
-                "mickey.mouse@gmail.com"
-            ],
-            "created": "2023-11-05T15:07:42.000-05:00",
-            "updated": "2024-02-01T19:55:00.000-05:00",
-            "_links": {
-                "self": {
-                    "resource-type": "user",
-                    "href": "https://api.assignr.com/api/v2/users/1234.json"
-                },
-                "avatar_square": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=300"
-                },
-                "games": {
-                    "href": "https://api.assignr.com/api/v2/users/1234/games.json"
-                },
-                "avatar_original": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=800"
-                },
-                "avatar_icon": {
-                    "resource-type": "avatar",
-                    "href": "https://app.assignr.com/photo/d16ef976637a7d3d26ec794c6e6eb8987ad4b48618bd83c2929fd7407c77fa0d??size=64"
-                }
+    def test_get_referees_by_availability(self):
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        temp.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
             },
-            "_embedded": {
-                "site": {
-                    "id": 1234,
-                    "name": "Soccer League",
-                    "created": "2023-01-19T19:19:43.000-05:00",
-                    "updated": "2024-02-01T00:02:13.000-05:00",
-                    "_links": {
-                        "self": {
-                            "resource-type": "site",
-                            "href": "https://api.assignr.com/api/v2/sites/1234.json"
-                        }
-                    }
-                }
+            12761: {
+                'first_name': 'Homer',
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']                
             }
         }
-
-        mock_requests.get.return_value = mock_response
-
-        expected_result = {
-            "last_name": "Mickey",
-            "first_name": "Mouse",
-            "active": "true",
-            "official": "true",
-            "assignor": "false",
-            "manager": "false",
-            "email_addresses": [
-                "mickey.mouse@gmail.com"
-            ]
-        }
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
-        result = temp.get_referee_information('referee')
-        self.assertEqual(result, expected_result)
-
-    @patch(ASSIGNR_REQUESTS)
-    def test_invalid_referee_information(self, mock_requests):
-        mock_requests.post.return_value = mock_auth_response
-
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.json.return_value = {}
-
-        mock_requests.get.return_value = mock_response
-
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
-        with self.assertLogs(level='INFO') as cm:
-            result = temp.get_referee_information('referee')
-        self.assertEqual(cm.output, ["ERROR:root:Failed to get referee information: 500"])
-        self.assertEqual(result, {})
-
-    def test_get_referees_by_availability(self):
         expected_result = [
             {
                 'accepted': 'false',
                 'position': 'Referee',
-                'first_name': None,
-                'last_name': None
-            }, {
-                'accepted': 'false',
-                'position': 'Referee',
                 'first_name': 'Mickey',
-                'last_name': 'Mouse'
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
             }, {
                 'accepted': 'true',
                 'position': 'Scorekeeper',
                 'first_name': 'Homer',
-                'last_name': 'Simpson'
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']
             }
         ]
         payload = [
@@ -321,79 +235,9 @@ class TestAssignr(TestCase):
                 }
             }
         }]
-        temp = Assignr('123', '234', '345', BASE_URL,
-                       AUTH_URL)
+ 
         referees = temp.get_referees_by_assignments(payload)
         self.assertEqual(referees, expected_result)
-
-#    def test_get_referees(self):
-#        payload = [{
-#            'id': 12345,
-#            'no_show': False,
-#            'position_name': 'Referee',
-#            'no_show_status': None,
-#            '_links': {
-#                'official': {
-#                    'resource-type': 'user',
-#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
-#                },
-#                'scheduled_official': {
-#                    'resource-type': 'user',
-#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
-#                },
-#                'assignment': {
-#                    'resource-type': 'assignment',
-#                    'href': 'https://api.assignr.com/api/v2/assignments/123456.json'
-#                }
-#            }
-#        }, {
-#            'id': 23456, 'no_show': False,
-#            'position_name': 'Asst. Referee', 'no_show_status': None,
-#            'created': '2023-10-22T20:05:55.000-04:00',
-#            'updated': '2023-10-22T20:05:55.000-04:00',
-#            '_links': {}
-#        }, {
-#            'id': 3881676, 'no_show': False,
-#            'position_name': 'Asst. Referee', 'no_show_status': None,
-#            'created': '2023-10-22T20:05:55.000-04:00',
-#            'updated': '2023-10-22T20:05:55.000-04:00',
-#            '_links': {}
-#        }]
-#        expected_results = [
-#            {'no_show': False, 'position': 'Referee', 'first_name': 'Mickey', 'last_name': 'Mouse'},
-#
-#        ]
-#        assignr_mock = MagicMock()
-#        assignr_mock.get_referee_information(return_value = {
-#            'first_name': 'Mickey',
-#            'last_name': 'Mouse',
-#            'email_addresses': 'test@example.com',
-#            'official': 'test official',
-#            'assignor': 'test assignor',
-#            'manager': 'test manager',
-#            'active': 'true'           
-#        })
-#        temp = Assignr('123', '234', '345', BASE_URL,
-#                       AUTH_URL)
-#        with patch('assignr.assignr.Assignr', return_value=assignr_mock):
-#            referees = temp.get_referees(payload)
-#        self.assertEqual(referees, expected_results)
-
-#    @patch(ASSIGNR_REQUESTS)
-#    def test_valid_get_misconduct(self, mock_requests):
-#        mock_requests.post.return_value = mock_auth_response
-#
-#        mock_response = MagicMock()
-#        mock_response.status_code = 500
-#        mock_response.json.return_value = {}
-#
-#        mock_requests.get.return_value = mock_response
-#
-#        temp = Assignr('123', '234', '345', BASE_URL,
-#                       AUTH_URL)
-#        temp.site_id = 100
-#        result = temp.get_misconducts('01/01/2022', '01/01/2022')
-#        self.assertEqual(result, [])
 
     @patch(ASSIGNR_REQUESTS)
     def test_invalid_get_reports(self, mock_requests):
@@ -575,238 +419,658 @@ class TestAssignr(TestCase):
         self.assertEqual(result, [])
 
 
-class TestAssignrHelpers(TestCase):
-    def test_get_match_count_referees(self):
-        pattern = r'\.officials\.\d+\.position'
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".officials.0.name": "Mickey Mouse",
-            ".officials.0.grade": None,
-            ".officials.0.position": "Referee",
-            ".officials.1.name": "Dumbo",
-            ".officials.1.grade": None,
-            ".officials.1.position": ASST_REFEREE,
-            ".officials.2.name": "Pluto",
-            ".officials.2.grade": None,
-            ".officials.2.position": ASST_REFEREE,
-            ".startTime": "2024-04-05T08:00:00-04:00"
+class TestGetGameIds(TestCase):
+
+    def setUp(self):
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None
+        self.instance.site_id = None
+
+    @patch.object(Assignr, 'get_game_information')
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    @patch('helpers.helpers.format_date_yyyy_mm_dd')
+    def test_get_game_ids(self, mock_format_date, mock_authenticate,
+                          mock_get_site_id, mock_get_requests, mock_get_game_information):
+        mock_format_date.side_effect = lambda dt: dt.strftime('%Y-%m-%d')
+
+        self.instance.token = None
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [{'id': 1, 'game_type': 'Coastal'}, {'id': 2, 'game_type': 'Other'}]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [{'id': 3, 'game_type': 'Coastal'}, {'id': 4, 'game_type': 'Other'}]}
+            })
+        ]
+
+        # Mocking get_game_information to return game details
+        mock_get_game_information.side_effect = lambda game: {'game_id': game['id'], 'info': 'some_info'}
+
+        # Call the method under test
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+
+        # Expected result with only Coastal games
+        expected_result = {
+            1: {'game_id': 1, 'info': 'some_info', 'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            3: {'game_id': 3, 'info': 'some_info', 'game_report_url': None, 'home_roster': None, 'away_roster': None}
         }
 
-        self.assertEqual(3, get_match_count(payload, pattern))
+        # Assertions
+        self.assertEqual(result, expected_result)
 
-    def test_get_referees_all(self):
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".officials.0.name": "Mickey Mouse",
-            ".officials.0.grade": None,
-            ".officials.0.position": "Referee",
-            ".officials.1.name": "Dumbo",
-            ".officials.1.grade": None,
-            ".officials.1.position": ASST_REFEREE,
-            ".officials.2.name": "Pluto",
-            ".officials.2.grade": None,
-            ".officials.2.position": ASST_REFEREE,
-            ".startTime": "2024-04-05T08:00:00-04:00"
+        # Verify that the authenticate method was called
+        mock_authenticate.assert_called_once()
+
+        # Verify that the get_site_id method was called
+        mock_get_site_id.assert_called_once()
+
+        # Verify that the API was called twice (pagination)
+        self.assertEqual(mock_get_requests.call_count, 2)
+
+        # Verify that the game information was retrieved for the correct game types
+        mock_get_game_information.assert_any_call({'id': 1, 'game_type': 'Coastal'})
+        mock_get_game_information.assert_any_call({'id': 3, 'game_type': 'Coastal'})
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_site_id')
+#    @patch.object(Assignr, 'authenticate')
+#    def test_get_game_ids_error_handling(self, mock_get_requests, mock_authenticate,
+#                          mock_get_site_id,):
+#        self.instance.token = None
+#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+#
+#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+#        mock_get_requests.return_value = (500, {})
+#
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+#
+#        # Expected result is an empty dictionary due to API failure
+#        self.assertEqual(result, {})
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_site_id')
+#    @patch.object(Assignr, 'authenticate')
+#    def test_get_game_ids_keyerror_handling(self, mock_get_requests, mock_authenticate,
+#                          mock_get_site_id,):
+#        self.instance.token = None
+#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+#
+#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+#        mock_get_requests.return_value = (200, {
+#            'page': {'pages': 1},
+#            '_embedded': {'games': [{'id': 1}]}
+#        })
+#
+#        # Call the method and expect it to handle KeyError gracefully
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
+
+#        self.assertEqual(result, {})
+
+
+class TestGameInformation(TestCase):
+    def setUp(self):
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+                'email_addresses': ['mickey@disney.mouse']
+            },
+            12761: {
+                'first_name': 'Homer',
+                'last_name': 'Simpson',
+                'email_addresses': ['homer@springfield.simpson']                
+            }
         }
-
-        expected_results = [{
-            "name": "Mickey Mouse",
-            "position": "Referee"
-        },{
-            "name": "Dumbo",
-            "position": ASST_REFEREE
-        },{
-            "name": "Pluto",
-            "position": ASST_REFEREE
-        }]
-
-        self.assertEqual(expected_results, get_referees(payload))
-
-
-    def test_get_referees_missing(self):
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".officials.0.name": "Mickey Mouse",
-            ".officials.0.grade": None,
-            ".officials.0.position": "Referee",
-            ".officials.1.name": NOT_ASSIGNED,
-            ".officials.1.grade": None,
-            ".officials.1.position": ASST_REFEREE,
-            ".startTime": "2024-04-05T08:00:00-04:00"
+        self.instance.assignors = {
+            123: {
+                'first_name': 'Marge',
+                'last_name': 'Simpson',
+                'email_addresses': ['marge@springfield.simpson']                
+            }
         }
-
-        expected_results = [{
-            "name": "Mickey Mouse",
-            "position": "Referee"
-        },{
-            "name": NOT_ASSIGNED,
-            "position": ASST_REFEREE
-        },{
-            "name": NOT_ASSIGNED,
-            "position": ASST_REFEREE
-        }]
-
-        self.assertEqual(expected_results, get_referees(payload))
-
-    def test_get_match_count_misconducts(self):
-        pattern = r'\.misconductGrid\.\d+\.name'
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".misconductGrid.0.name": "Homer Simpson",
-            ".misconductGrid.0.role": 'player',
-            ".misconductGrid.0.team": "home",
-            ".misconductGrid.0.minute": "42",
-            ".misconductGrid.0.offense": "PO",
-            ".misconductGrid.0.description": "Test",
-            ".misconductGrid.0.passIdNumber": None,
-            ".misconductGrid.0.cautionSendOff": "caution",
-            ".misconductGrid.1.name": "Bart Simpson",
-            ".misconductGrid.1.role": 'player',
-            ".misconductGrid.1.team": "away",
-            ".misconductGrid.1.minute": "60",
-            ".misconductGrid.1.offense": "DGF",
-            ".misconductGrid.1.description": "This is a Test",
-            ".misconductGrid.1.passIdNumber": None,
-            ".misconductGrid.1.cautionSendOff": "sendOff",
-            ".startTime": "2024-04-05T08:00:00-04:00"
-        }
-
-        self.assertEqual(2, get_match_count(payload, pattern))
-
-    def test_misconducts_caution_sendoff(self):
-        expected_results = [{
-            "name": "Homer Simpson",
-            "role": "player",
-            "team": "home",
-            "minute": "42",
-            "offense": "PO",
-            "description": "Test",
-            "pass_number": None,
-            "caution_send_off": "caution"
-        },{
-            "name": "Bart Simpson",
-            "role": "player",
-            "team": "away",
-            "minute": "60",
-            "offense": "DGF",
-            "description": "This is a Test",
-            "pass_number": None,
-            "caution_send_off": "sendOff"
-        }]
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".league": "Springfield",
-            ".misconductGrid.0.name": "Homer Simpson",
-            ".misconductGrid.0.role": 'player',
-            ".misconductGrid.0.team": "home",
-            ".misconductGrid.0.minute": "42",
-            ".misconductGrid.0.offense": "PO",
-            ".misconductGrid.0.description": "Test",
-            ".misconductGrid.0.passIdNumber": None,
-            ".misconductGrid.0.cautionSendOff": "caution",
-            ".misconductGrid.1.name": "Bart Simpson",
-            ".misconductGrid.1.role": 'player',
-            ".misconductGrid.1.team": "away",
-            ".misconductGrid.1.minute": "60",
-            ".misconductGrid.1.offense": "DGF",
-            ".misconductGrid.1.description": "This is a Test",
-            ".misconductGrid.1.passIdNumber": None,
-            ".misconductGrid.1.cautionSendOff": "sendOff",
-            ".startTime": "2024-04-05T08:00:00-04:00"
-        }
-
-        self.assertEqual(expected_results, get_misconducts(payload))
-
-    def test_misconducts_caution(self):
-        expected_results = [{
-            "name": "Homer Simpson",
-            "role": "player",
-            "team": "home",
-            "minute": "42",
-            "offense": "PO",
-            "description": "Test",
-            "pass_number": None,
-            "caution_send_off": "caution"
-        }]
-        payload = {
-            ".ageGroup": "Grade 1/2",
-            ".awayTeam": "2009A-Bolts-Girls",
-            ".homeTeam": "2007A-Bolts-Girls",
-            ".ejections": "true",
-            ".league": "Springfield",
-            ".misconductGrid.0.name": "Homer Simpson",
-            ".misconductGrid.0.role": 'player',
-            ".misconductGrid.0.team": "home",
-            ".misconductGrid.0.minute": "42",
-            ".misconductGrid.0.offense": "PO",
-            ".misconductGrid.0.description": "Test",
-            ".misconductGrid.0.passIdNumber": None,
-            ".misconductGrid.0.cautionSendOff": "caution",
-            ".startTime": "2024-04-05T08:00:00-04:00"
-        }
-
-        self.assertEqual(expected_results, get_misconducts(payload))
-
     def test_get_game_information(self):
         payload = {
-            'id': 'some_id',
-            'localized_date': 'date',
-            'localized_time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'subvenue': 'sub venue',
-            'game_type': 'game type',
-            'league': 'league'
+            "id": 101,
+            "localized_date": "2024-09-01",
+            "localized_time": "15:00",
+            "start_time": "14:45",
+            "home_team": "Team A",
+            "away_team": "Team B",
+            "age_group": "U12",
+            "league": "Youth League",
+            "gender": "M",
+            "game_type": "Friendly",
+            "cancelled": False,
+            "_embedded": {
+                "assignor": {"id": 123},
+                "assignments": [
+                    {
+                        'position': 'Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12656}}
+                    }, {
+                        'position': 'Assistant Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12761}}
+                    }
+                ],
+                "venue": "Stadium A"
+            },
+            "subvenue": "Field 2"
         }
-        expected_results = {
-            'id': 'some_id',
-            'date': 'date',
-            'time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'sub_venue': 'sub venue',
-            'game_type': 'game type',
-            'league': 'league'
-        }
-        result = get_game_information(payload)
-        self.assertEqual(result, expected_results)
 
-    def test_get_game_information_error(self):
+        # Call the method under test
+        result = self.instance.get_game_information(payload)
+
+        # Assert that the result matches the expected output
+        expected_result = {
+            'id': 101,
+            'game_date': '2024-09-01',
+            'game_time': '15:00',
+            'start_time': '14:45',
+            'home_team': 'Team A',
+            'away_team': 'Team B',
+            'age_group': 'U12',
+            'league': 'Youth League',
+            'venue': "Stadium A",
+            'sub_venue': "Field 2",
+            'gender': 'M',
+            'game_type': 'Friendly',
+            'cancelled': False,
+            'referees': [
+                {'accepted': True, 'position': 'Referee',
+                 'first_name': 'Mickey', 'last_name': 'Mouse',
+                 'email_addresses': ['mickey@disney.mouse']},
+                {'accepted': True, 'position': 'Assistant Referee',
+                 'first_name': 'Homer', 'last_name': 'Simpson',
+                 'email_addresses': ['homer@springfield.simpson']}
+            ],
+            'assignor': {'first_name': 'Marge', 'last_name': 'Simpson',
+                         'email_addresses': ['marge@springfield.simpson']}
+        }
+
+        self.assertEqual(result, expected_result)
+
+    @patch.object(Assignr, 'get_referees_by_assignments')
+    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments):
+        # Prepare a payload with missing keys to simulate a KeyError
         payload = {
-            'id': 'some_id',
-            'localized_date': 'date',
-            'localized_time': 'time',
-            'start_time': 'start_time',
-            'home_team': 'home team',
-            'away_team': 'away team',
-            'age_group': 'age group',
-            'venue': 'venue',
-            'gender': 'boys',
-            'subvenue': 'sub venue',
-            'game_type': 'game type'
+            "id": 101,
+            # Missing several keys to trigger the KeyError exception
         }
 
-        self.assertRaises(KeyError, get_game_information, payload)
+        # Call the method under test
+        result = self.instance.get_game_information(payload)
+
+        # Assert that the result contains None values for missing fields
+        expected_result = {
+            'id': 101,
+            'game_date': None,
+            'game_time': None,
+            'start_time': None,
+            'home_team': None,
+            'away_team': None,
+            'age_group': None,
+            'league': None,
+            'venue': None,
+            'sub_venue': None,
+            'gender': None,
+            'game_type': None,
+            'cancelled': None,
+            'referees': None,
+            'assignor': None
+        }
+
+        self.assertEqual(result, expected_result)
+
+
+class TestMatchGamesToReports(TestCase):
+
+    def setUp(self):
+        # Set up the instance of the class that contains match_games_to_reports
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 'dummy_token'
+        self.instance.site_id = 123
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    def test_match_games_to_reports(self, mock_authenticate, mock_get_site_id, mock_get_requests):
+        # Mock authenticate to simulate token generation if needed
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'new_dummy_token')
+
+        # Mock get_site_id to set a dummy site_id if needed
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 456)
+
+        # Simulating API responses with pagination (2 pages)
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'form_submissions': [
+                    {
+                        "_embedded": {
+                            "game": {"id": 1},
+                            "values": [
+                                {"key": ".uploadHomeTeamRoster.0.url", "value": ["home_roster_url"]},
+                                {"key": ".uploadAwayTeamRoster.0.url", "value": ["away_roster_url"]}
+                            ]
+                        },
+                        "_links": {'game_report_webview': {'href': 'game_report_url_1'}}
+                    }
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'form_submissions': [
+                    {
+                        "_embedded": {
+                            "game": {"id": 2},
+                            "values": [
+                                {"key": ".uploadHomeTeamRoster.0.url", "value": []},  # no home roster
+                                {"key": ".uploadAwayTeamRoster.0.url", "value": ["away_roster_url"]}
+                            ]
+                        },
+                        "_links": {'game_report_webview': {'href': 'game_report_url_2'}}
+                    }
+                ]}
+            })
+        ]
+
+        # Simulating the input 'games' dictionary
+        games = {
+            1: {'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            2: {'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Define start and end dates
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+
+        # Call the method under test
+        result = self.instance.match_games_to_reports(start_dt, end_dt, games)
+
+        # Expected result after processing both pages
+        expected_result = {
+            1: {'game_report_url': 'game_report_url_1', 'home_roster': True, 'away_roster': True},
+            2: {'game_report_url': 'game_report_url_2', 'home_roster': False, 'away_roster': True}
+        }
+
+        # Assert that the games dictionary is updated as expected
+        self.assertEqual(result, expected_result)
+
+        # Check that no errors occurred
+        mock_authenticate.assert_not_called()  # token was already set
+
+    @patch.object(Assignr, 'get_requests')
+    def test_match_games_to_reports_keyerror_handling(self, mock_get_requests):
+        # Simulate a response missing required keys to trigger KeyError
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {'form_submissions': [
+                {
+                    "_embedded": {
+                        "game": {"id": 1},
+                        "values": []
+                    },
+                    "_links": {'game_report_webview': {'href': 'game_report_url_1'}}
+                }
+            ]}
+        })
+
+        # Simulating the input 'games' dictionary
+        games = {
+            1: {'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Define start and end dates
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+
+        # Call the method under test
+        result = self.instance.match_games_to_reports(start_dt, end_dt, games)
+
+        # Expected result should still update the game_report_url but no roster info due to missing keys
+        expected_result = {
+            1: {'game_report_url': 'game_report_url_1', 'home_roster': False, 'away_roster': False}
+        }
+
+        # Assert that the games dictionary is updated correctly
+        self.assertEqual(result, expected_result)
+
+
+class TestGetGameIds(TestCase):
+
+    def setUp(self):
+        # Set up an instance of the class that contains get_game_ids
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_game_information')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    @patch('helpers.helpers.format_date_yyyy_mm_dd')
+    def test_get_game_ids(self, mock_format_date, mock_authenticate, mock_get_site_id, mock_get_game_information, mock_get_requests):
+        # Mocking format_date_yyyy_mm_dd
+        mock_format_date.side_effect = lambda dt: dt
+
+        # Mocking the authenticate and get_site_id methods
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Simulating API response with pagination (2 pages)
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [
+                    {'id': 1, 'game_type': 'Coastal'},
+                    {'id': 2, 'game_type': 'Other'}
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'games': [
+                    {'id': 3, 'game_type': 'Coastal'}
+                ]}
+            })
+        ]
+
+        # Mocking get_game_information to return dummy game info
+        mock_get_game_information.side_effect = lambda item: {
+            'id': item['id'],
+            'game_report_url': None,
+            'home_roster': None,
+            'away_roster': None
+        }
+
+        # Define the date range and game type
+        start_dt = "2024-09-01"
+        end_dt = "2024-09-15"
+        game_type = "Coastal"
+
+        # Call the method under test
+        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
+
+        # Expected result only includes Coastal games
+        expected_result = {
+            1: {'id': 1, 'game_report_url': None, 'home_roster': None, 'away_roster': None},
+            3: {'id': 3, 'game_report_url': None, 'home_roster': None, 'away_roster': None}
+        }
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
+
+        # Verify that the methods were called correctly
+        mock_authenticate.assert_called_once()  # authenticate should be called since token is None
+        mock_get_site_id.assert_called_once()  # get_site_id should be called since site_id is None
+
+        # Check that get_requests was called twice (pagination handling)
+        self.assertEqual(mock_get_requests.call_count, 2)
+
+#    @patch.object(Assignr, 'get_requests')
+#    @patch.object(Assignr, 'get_game_information')
+#    def test_get_game_ids_api_failure(self, mock_get_game_information, mock_get_requests):
+#        # Simulate an unsuccessful API call (status code != 200)
+#        mock_get_requests.return_value = (500, None)
+#
+#        # Simulating the input 'games' dictionary
+#        start_dt = "2024-09-01"
+#        end_dt = "2024-09-15"
+#        game_type = "Coastal"
+#
+#        # Call the method under test
+#        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
+#
+#        # Expected result should be an empty dictionary since the API failed
+#        expected_result = {}
+#
+#        # Assert that the result is an empty dictionary
+#        self.assertEqual(result, expected_result)
+#
+#        # Verify that the request was made once and failed
+#        mock_get_requests.assert_called_once()
+
+
+class TestGetAssignors(TestCase):
+
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    @patch.object(Assignr, 'authenticate')
+    def test_get_assignors_success(self, mock_authenticate, mock_get_site_id, mock_get_requests):
+        # Mock the authenticate and get_site_id methods
+        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Mocking the response for the first page of users
+        mock_get_requests.side_effect = [
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'users': [
+                    {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True, 'active': True},
+                    {'first_name': 'Jane', 'last_name': 'Smith', 'email_addresses': ['jane@example.com'], 'assignor': False, 'active': True},
+                ]}
+            }),
+            (200, {
+                'page': {'pages': 2},
+                '_embedded': {'users': [
+                    {'first_name': 'Emily', 'last_name': 'Davis', 'email_addresses': ['emily@example.com'], 'assignor': True, 'active': True},
+                    {'first_name': 'Chris', 'last_name': 'Brown', 'email_addresses': ['chris@example.com'], 'assignor': True, 'active': False},
+                ]}
+            })
+        ]
+
+        # Call the method under test
+        result = self.instance.get_assignors()
+
+        # Expected result should only include active assignors
+        expected_result = [
+            {'first_name': 'John', 'last_name': 'Doe', 'email': 'john@example.com'},
+            {'first_name': 'Emily', 'last_name': 'Davis', 'email': 'emily@example.com'}
+        ]
+
+        # Assert that the result matches the expected result
+        self.assertEqual(result, expected_result)
+
+        # Verify that the methods were called correctly
+        mock_authenticate.assert_called_once()  # authenticate should be called since token is None
+        mock_get_site_id.assert_called_once()  # get_site_id should be called since site_id is None
+
+        # Check that get_requests was called twice (pagination handling)
+        self.assertEqual(mock_get_requests.call_count, 2)
+        mock_get_requests.assert_any_call(
+            'sites/123/users',
+            params={'page': 1}
+        )
+        mock_get_requests.assert_any_call(
+            'sites/123/users',
+            params={'page': 2}
+        )
+
+#    @patch.object(Assignr, 'get_requests')
+#    def test_get_assignors_api_failure(self, mock_get_requests):
+#        # Simulate an unsuccessful API call (status code != 200)
+#        mock_get_requests.return_value = (500, None)
+#
+#        # Call the method under test
+#        result = self.instance.get_assignors()
+#
+#        # Expected result should be an empty list since the API failed
+#        expected_result = []
+#
+#        # Assert that the result is an empty list
+#        self.assertEqual(result, expected_result)
+#
+#        # Verify that the request was made once and failed
+#        mock_get_requests.assert_called_once()
+#
+#    @patch.object(Assignr, 'get_requests')
+#    def test_get_assignors_key_error(self, mock_get_requests):
+#        # Simulate an API response with a missing key (KeyError scenario)
+#        mock_get_requests.return_value = (200, {
+#            'page': {'pages': 1},
+#            '_embedded': {'users': [
+#                {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True}  # 'active' key is missing
+#            ]}
+#        })
+#
+#        # Call the method under test
+#        result = self.instance.get_assignors()
+#
+#        # Expected result should be an empty list since the key 'active' is missing
+#        expected_result = []
+#
+#        # Assert that the result is an empty list
+#        self.assertEqual(result, expected_result)
+#
+
+class TestGetLeagueGames(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = None  # simulate no token
+        self.instance.site_id = None  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_successful_response(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        mock_get_requests.return_value = (200, {
+            '_embedded': {
+                'games': [
+                    {'id': 1, 'league': 'Premier', 'game_type': 'Type1'},
+                    {'id': 2, 'league': 'Championship', 'game_type': 'Type2'}
+                ]
+            }
+        })
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(len(result), 1)  # Only 1 game from the Premier league
+        self.assertEqual(result[0]['id'], 1)
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_failed_api_call(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+        mock_get_requests.return_value = (500, None)
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(result, [])  # No results on failed API call
+#        mock_logger.error.assert_called_once_with('Failed to get games: 500')
+
+    @patch.object(Assignr, 'get_requests')
+    @patch.object(Assignr, 'get_site_id')
+    def test_key_error_in_response(self, mock_get_site_id, mock_get_requests):
+        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
+
+        # Simulate missing keys in the response
+        mock_get_requests.return_value = (200, {
+            '_embedded': {}  # Missing 'games'
+        })
+
+        # Test
+        league = 'Premier'
+        start_dt = '2024-01-01'
+        end_dt = '2024-01-31'
+        result = self.instance.get_league_games(league, start_dt, end_dt)
+
+        # Assertions
+        self.assertEqual(result, [])  # No results due to KeyError
+#        mock_logger.error.assert_called_once_with("Key: 'games', missing from Game response")
+
+
+class TestLoadRefereesAssignors(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 1234  # simulate no token
+        self.instance.site_id = 123  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    def test_successful_response(self,mock_get_requests):
+  
+        # Mock setup
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {
+                'users': [
+                    {'id': '1', 'official': True, 'assignor': False, 'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john.doe@example.com']},
+                    {'id': '2', 'official': False, 'assignor': True, 'first_name': 'Jane', 'last_name': 'Smith', 'email_addresses': ['jane.smith@example.com']}
+                ]
+            }
+        })
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(len(self.instance.referees), 1)
+        self.assertEqual(len(self.instance.assignors), 1)
+        self.assertEqual(self.instance.referees['1']['first_name'], 'John')
+        self.assertEqual(self.instance.assignors['2']['last_name'], 'Smith')
+
+    @patch.object(Assignr, 'get_requests')
+    def test_failed_api_call(self, mock_get_requests):
+        
+        # Simulate API call failure
+        mock_get_requests.return_value = (500, None)
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(self.instance.referees, {})
+        self.assertEqual(self.instance.assignors, {})
+
+    @patch.object(Assignr, 'get_requests')
+    def test_key_error_in_response(self, mock_get_requests):
+
+        # Simulate missing keys in the response
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},  # Missing '_embedded' and 'users'
+        })
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(self.instance.referees, {})
+        self.assertEqual(self.instance.assignors, {})

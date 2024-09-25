@@ -6,14 +6,15 @@ from getopt import (getopt, GetoptError)
 from datetime import (datetime, timedelta)
 
 from assignr.assignr import Assignr
-from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
-                             get_coach_information, get_email_vars,
-                             create_message, get_assignor_information)
+from helpers.helpers import (get_environment_vars, get_email_vars,
+                             create_message, get_center_referee_info,
+                             get_assignor_information)
 from helpers.email import EMailClient
 from helpers import constants
 
 START_DATE = "start_date"
 END_DATE = "end_date"
+REFEREE_REMINDER = "referee_reminder"
 
 env_file = environ.get('ENV_FILE', '.env')
 load_dotenv(env_file)
@@ -28,15 +29,15 @@ logger = logging.getLogger(__name__)
 
 def get_arguments(args):
     arguments = {
-        START_DATE: None, END_DATE: None
+        START_DATE: None, END_DATE: None, REFEREE_REMINDER: False
     }
 
     rc = 0
-    USAGE='USAGE: game_report.py -s <start-date> -e <end-date>' \
-    ' DATE FORMAT=MM/DD/YYYY'
+    USAGE='USAGE: missing_game_reports.py -s <start-date> -e <end-date>' \
+    ' DATE FORMAT=MM/DD/YYYY -r'
 
     try:
-        opts, args = getopt(args,"hs:e:",
+        opts, args = getopt(args,"hrs:e:",
                             ["start-date=","end-date="])
     except GetoptError:
         logger.error(USAGE)
@@ -46,6 +47,8 @@ def get_arguments(args):
         if opt == '-h':
             logger.error(USAGE)
             return 99, arguments
+        elif opt == '-r':
+            arguments[REFEREE_REMINDER] = True
         elif opt in ("-s", "--start-date"):
             arguments[START_DATE] = arg
         elif opt in ("-e", "--end-date"):
@@ -92,91 +95,24 @@ def send_email(email_vars, subject, message, send_to):
     return email_client.send_email(subject, message,
                                    send_to, True)
 
-def process_administrator(email_vars, reports, start_date, end_date,
-                          assignor_emails):
-    subject = f'Administrator Game Reports: {start_date.strftime("%m/%d/%Y")}' \
-             f' - {end_date.strftime("%m/%d/%Y")}'
-    temp_addresses = [email_vars[constants.ADMIN_EMAIL]]
-    temp_addresses.extend(assignor_emails)
-    email_addresses = ','.join(temp_addresses) 
-
-    content = {
-        START_DATE: start_date,
-        END_DATE: end_date,
-        'reports': reports
-    }
-
-    message = create_message(content, 'administrator.html.jinja')
+def send_referee_reminder(game, email_vars, subject):
+    center_referee = get_center_referee_info(game['referees'])
+    assignor_addresses = game['assignor']['email_addresses']
+    email_addresses = ",".join(center_referee['email_addresses'] + assignor_addresses)
+    message = create_message(game, 'missing_referee_report.html.jinja')
 
     response = send_email(email_vars, subject, message,
                           email_addresses)
     if response:
         logger.error(response)
-
-    logger.info("Completed Administrator Report")
-
-def process_misconducts(email_vars, misconducts, start_date,
-                        end_date, assignor_emails):
-    temp_emails = [email_vars[constants.MISCONDUCTS_EMAIL]]
-    temp_emails.extend(assignor_emails)
-    email_addresses = ",".join(temp_emails)
-
-    subject = f'Misconduct: {start_date.strftime("%m/%d/%Y")}' \
-             f' - {end_date.strftime("%m/%d/%Y")}'
-    content = {
-        START_DATE: start_date,
-        END_DATE: end_date,
-        'misconducts': misconducts
-    }
-
-    message = create_message(content, 'misconduct.html.jinja')
-
-    response = send_email(email_vars, subject, message,
-                          email_addresses)
-
-    if response:
-        logger.error(response)
-
-    logger.info("Completed Misconduct Report")
-
-def process_assignor_reports(email_vars, reports, start_date, end_date,
-                             assignors):
-    subject = f'Game Reports Needing Attention: {start_date.strftime("%m/%d/%Y")}' \
-             f' - {end_date.strftime("%m/%d/%Y")}'
-
-    for report in reports:
-        content = {
-            START_DATE: start_date,
-            END_DATE: end_date,
-            'report': report
-        }
-
-        message = create_message(content, 'assignor.html.jinja')
-
-        temp_emails = []
-        for assignor in assignors[report['league']]:
-            temp_emails.append(assignor['email'])
-        assignor_emails = ','.join(temp_emails)
-
-        response = send_email(email_vars, subject, message,
-                              assignor_emails)
-    
-        if response:
-            logger.error(response)
-
-    logger.info("Completed Assignors Report")
 
 def main():
-    logger.info("Starting Game Report")
+    logger.info("Starting Missing Game Report")
     rc, args = get_arguments(argv[1:])
     if rc:
         exit(rc)
 
     rc, env_vars = get_environment_vars()
-    if rc:
-        exit(rc)
-
-    rc, spreadsheet_vars = get_spreadsheet_vars()
     if rc:
         exit(rc)
 
@@ -189,9 +125,6 @@ def main():
                       env_vars[constants.CLIENT_SCOPE],
                       env_vars[constants.BASE_URL],
                       env_vars[constants.AUTH_URL])
-
-    coaches = get_coach_information(spreadsheet_vars[constants.SPREADSHEET_ID],
-                                    spreadsheet_vars[constants.SPREADSHEET_RANGE])
     
     assignors = get_assignor_information()
     assignor_emails = []
@@ -199,20 +132,32 @@ def main():
         for assignor in assignors[association]:
             assignor_emails.append(assignor['email'])
 
-    reports = assignr.get_reports(args[START_DATE],
-                                    args[END_DATE],
-                                    assignors,
-                                    coaches)
-    process_misconducts(email_vars, reports['misconducts'],
-                        args[START_DATE], args[END_DATE],
-                        assignor_emails)
-    process_administrator(email_vars, reports['admin_reports'],
-                        args[START_DATE], args[END_DATE],
-                        assignor_emails)
-    process_assignor_reports(email_vars, reports['assignor_reports'],
-                             args[START_DATE], args[END_DATE],
-                             assignors)
-    logger.info("Completes Game Report")
+    assignr.load_referees_assignors()
+
+    games = assignr.get_game_ids(args[START_DATE],
+                                    args[END_DATE])
+    games = assignr.match_games_to_reports(args[START_DATE],
+                                    args[END_DATE], games)
+
+    game_reports = []
+    subject = f'Game Reports Needing Attention: {args[START_DATE].strftime("%m/%d/%Y")}' \
+             f' - {args[END_DATE].strftime("%m/%d/%Y")}'
+
+    for game in games.values():
+        if not game['cancelled'] and (game['game_report_url'] is None or \
+            not game['home_roster'] or not game['away_roster']): 
+            game_reports.append(game)
+            if args[REFEREE_REMINDER]:
+                send_referee_reminder(game, email_vars, subject)
+
+    content = {'reports': game_reports}
+    message = create_message(content, 'missing_report.html.jinja')
+
+    response = send_email(email_vars, subject, message,
+                          email_vars[constants.ADMIN_EMAIL])
+    if response:
+        logger.error(response)
+    logger.info("Completed Missing Game Report")
 
 if __name__ == "__main__":
     main()

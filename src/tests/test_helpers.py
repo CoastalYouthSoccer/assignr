@@ -1,4 +1,5 @@
 from os import environ
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock, ANY)
 from googleapiclient.errors import HttpError
@@ -6,7 +7,10 @@ from helpers import constants
 from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              get_email_vars, format_str_hh_mm,
                              format_str_mm_dd_yyyy, load_sheet,
-                             rows_to_dict)
+                             rows_to_dict, get_match_count, get_misconducts,
+                             get_referees, get_coaches_name, set_boolean_value,
+                             format_date_mm_dd_yyyy, format_date_hh_mm,
+                             get_center_referee_info)
 
 CONST_GRADE_78 = "Grade 7/8"
 CLIENT_SECRET = "client_secret"
@@ -23,6 +27,8 @@ EMAIL_SERVER = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USERNAME = "email_username"
 EMAIL_PASSWORD = "email_password"
+NOT_ASSIGNED = "Not Assigned"
+ASST_REFEREE = "Asst. Referee"
 
 class TestHelpers(TestCase):
     @patch.dict(environ,
@@ -329,4 +335,427 @@ class TestHelpers(TestCase):
             }
         }
         result = rows_to_dict(rows)
+        self.assertEqual(result, expected_result)
+
+#    def test_get_referees(self):
+#        payload = [{
+#            'id': 12345,
+#            'no_show': False,
+#            'position_name': 'Referee',
+#            'no_show_status': None,
+#            '_links': {
+#                'official': {
+#                    'resource-type': 'user',
+#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
+#                },
+#                'scheduled_official': {
+#                    'resource-type': 'user',
+#                    'href': 'https://api.assignr.com/api/v2/users/12345.json'
+#                },
+#                'assignment': {
+#                    'resource-type': 'assignment',
+#                    'href': 'https://api.assignr.com/api/v2/assignments/123456.json'
+#                }
+#            }
+#        }, {
+#            'id': 23456, 'no_show': False,
+#            'position_name': 'Asst. Referee', 'no_show_status': None,
+#            'created': '2023-10-22T20:05:55.000-04:00',
+#            'updated': '2023-10-22T20:05:55.000-04:00',
+#            '_links': {}
+#        }, {
+#            'id': 3881676, 'no_show': False,
+#            'position_name': 'Asst. Referee', 'no_show_status': None,
+#            'created': '2023-10-22T20:05:55.000-04:00',
+#            'updated': '2023-10-22T20:05:55.000-04:00',
+#            '_links': {}
+#        }]
+#        expected_results = [
+#            {'no_show': False, 'position': 'Referee', 'first_name': 'Mickey', 'last_name': 'Mouse'},
+#
+#        ]
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        with patch('assignr.assignr.Assignr', return_value=assignr_mock):
+#            referees = temp.get_referees(payload)
+#        self.assertEqual(referees, expected_results)
+
+#    @patch(ASSIGNR_REQUESTS)
+#    def test_valid_get_misconduct(self, mock_requests):
+#        mock_requests.post.return_value = mock_auth_response
+#
+#        mock_response = MagicMock()
+#        mock_response.status_code = 500
+#        mock_response.json.return_value = {}
+#
+#        mock_requests.get.return_value = mock_response
+#
+#        temp = Assignr('123', '234', '345', BASE_URL,
+#                       AUTH_URL)
+#        temp.site_id = 100
+#        result = temp.get_misconducts('01/01/2022', '01/01/2022')
+#        self.assertEqual(result, [])
+
+    def test_get_match_count_referees(self):
+        pattern = r'\.officials\.\d+\.position'
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".officials.0.name": "Mickey Mouse",
+            ".officials.0.grade": None,
+            ".officials.0.position": "Referee",
+            ".officials.1.name": "Dumbo",
+            ".officials.1.grade": None,
+            ".officials.1.position": ASST_REFEREE,
+            ".officials.2.name": "Pluto",
+            ".officials.2.grade": None,
+            ".officials.2.position": ASST_REFEREE,
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        self.assertEqual(3, get_match_count(payload, pattern))
+
+    def test_get_referees_all(self):
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".officials.0.name": "Mickey Mouse",
+            ".officials.0.grade": None,
+            ".officials.0.position": "Referee",
+            ".officials.1.name": "Dumbo",
+            ".officials.1.grade": None,
+            ".officials.1.position": ASST_REFEREE,
+            ".officials.2.name": "Pluto",
+            ".officials.2.grade": None,
+            ".officials.2.position": ASST_REFEREE,
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        expected_results = [{
+            "name": "Mickey Mouse",
+            "position": "Referee"
+        },{
+            "name": "Dumbo",
+            "position": ASST_REFEREE
+        },{
+            "name": "Pluto",
+            "position": ASST_REFEREE
+        }]
+
+        self.assertEqual(expected_results, get_referees(payload))
+
+
+    def test_get_referees_missing(self):
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".officials.0.name": "Mickey Mouse",
+            ".officials.0.grade": None,
+            ".officials.0.position": "Referee",
+            ".officials.1.name": NOT_ASSIGNED,
+            ".officials.1.grade": None,
+            ".officials.1.position": ASST_REFEREE,
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        expected_results = [{
+            "name": "Mickey Mouse",
+            "position": "Referee"
+        },{
+            "name": NOT_ASSIGNED,
+            "position": ASST_REFEREE
+        },{
+            "name": NOT_ASSIGNED,
+            "position": ASST_REFEREE
+        }]
+
+        self.assertEqual(expected_results, get_referees(payload))
+
+    def test_get_match_count_misconducts(self):
+        pattern = r'\.misconductGrid\.\d+\.name'
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".misconductGrid.0.name": "Homer Simpson",
+            ".misconductGrid.0.role": 'player',
+            ".misconductGrid.0.team": "home",
+            ".misconductGrid.0.minute": "42",
+            ".misconductGrid.0.offense": "PO",
+            ".misconductGrid.0.description": "Test",
+            ".misconductGrid.0.passIdNumber": None,
+            ".misconductGrid.0.cautionSendOff": "caution",
+            ".misconductGrid.1.name": "Bart Simpson",
+            ".misconductGrid.1.role": 'player',
+            ".misconductGrid.1.team": "away",
+            ".misconductGrid.1.minute": "60",
+            ".misconductGrid.1.offense": "DGF",
+            ".misconductGrid.1.description": "This is a Test",
+            ".misconductGrid.1.passIdNumber": None,
+            ".misconductGrid.1.cautionSendOff": "sendOff",
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        self.assertEqual(2, get_match_count(payload, pattern))
+
+    def test_misconducts_caution_sendoff(self):
+        expected_results = [{
+            "name": "Homer Simpson",
+            "role": "player",
+            "team": "home",
+            "minute": "42",
+            "offense": "PO",
+            "description": "Test",
+            "pass_number": None,
+            "caution_send_off": "caution"
+        },{
+            "name": "Bart Simpson",
+            "role": "player",
+            "team": "away",
+            "minute": "60",
+            "offense": "DGF",
+            "description": "This is a Test",
+            "pass_number": None,
+            "caution_send_off": "sendOff"
+        }]
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".league": "Springfield",
+            ".misconductGrid.0.name": "Homer Simpson",
+            ".misconductGrid.0.role": 'player',
+            ".misconductGrid.0.team": "home",
+            ".misconductGrid.0.minute": "42",
+            ".misconductGrid.0.offense": "PO",
+            ".misconductGrid.0.description": "Test",
+            ".misconductGrid.0.passIdNumber": None,
+            ".misconductGrid.0.cautionSendOff": "caution",
+            ".misconductGrid.1.name": "Bart Simpson",
+            ".misconductGrid.1.role": 'player',
+            ".misconductGrid.1.team": "away",
+            ".misconductGrid.1.minute": "60",
+            ".misconductGrid.1.offense": "DGF",
+            ".misconductGrid.1.description": "This is a Test",
+            ".misconductGrid.1.passIdNumber": None,
+            ".misconductGrid.1.cautionSendOff": "sendOff",
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        self.assertEqual(expected_results, get_misconducts(payload))
+
+    def test_misconducts_caution(self):
+        expected_results = [{
+            "name": "Homer Simpson",
+            "role": "player",
+            "team": "home",
+            "minute": "42",
+            "offense": "PO",
+            "description": "Test",
+            "pass_number": None,
+            "caution_send_off": "caution"
+        }]
+        payload = {
+            ".ageGroup": "Grade 1/2",
+            ".awayTeam": "2009A-Bolts-Girls",
+            ".homeTeam": "2007A-Bolts-Girls",
+            ".ejections": "true",
+            ".league": "Springfield",
+            ".misconductGrid.0.name": "Homer Simpson",
+            ".misconductGrid.0.role": 'player',
+            ".misconductGrid.0.team": "home",
+            ".misconductGrid.0.minute": "42",
+            ".misconductGrid.0.offense": "PO",
+            ".misconductGrid.0.description": "Test",
+            ".misconductGrid.0.passIdNumber": None,
+            ".misconductGrid.0.cautionSendOff": "caution",
+            ".startTime": "2024-04-05T08:00:00-04:00"
+        }
+
+        self.assertEqual(expected_results, get_misconducts(payload))
+
+    def test_get_valid_coach_name(self):
+        coaches = {
+            'Grade 7/8': {
+                'Boys': {
+                    'Isotopes': 'Mr. Burns',
+                    'Springfield': 'Homer Simpson'
+                }
+            }
+        }
+        result = get_coaches_name(coaches, 'Grade 7/8', 'Boys', 'Springfield')
+        self.assertEqual(result, 'Homer Simpson')
+
+    def test_get_invalid_coach_name(self):
+        coaches = {
+            'Grade 7/8': {
+                'Boys': {
+                    'Isotopes': 'Mr. Burns',
+                    'Springfield': 'Homer Simpson'
+                }
+            }
+        }
+        result = get_coaches_name(coaches, 'Grade 7/8', 'Girls', 'Springfield')
+        self.assertEqual(result, 'Unknown')
+
+
+import unittest
+
+class TestSetBooleanValue(unittest.TestCase):
+    
+    def test_none_value(self):
+        self.assertFalse(set_boolean_value(None))
+    
+    def test_true_values(self):
+        true_values = ['true', '1', 't', 'y', 'yes']
+        for value in true_values:
+            with self.subTest(value=value):
+                self.assertTrue(set_boolean_value(value))
+    
+    def test_false_values(self):
+        false_values = ['false', '0', 'n', 'no']
+        for value in false_values:
+            with self.subTest(value=value):
+                self.assertFalse(set_boolean_value(value))
+    
+    def test_invalid_values(self):
+        invalid_values = ['', 'invalid', 'abc', 'random string']
+        for value in invalid_values:
+            with self.subTest(value=value):
+                self.assertFalse(set_boolean_value(value))
+
+
+class TestFormatDateMMDDYYYY(TestCase):
+
+    def test_valid_date(self):
+        valid_date = datetime(2023, 9, 22)
+        formatted = format_date_mm_dd_yyyy(valid_date)
+        self.assertEqual(formatted, "09/22/2023")
+
+    def test_parser_error(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.ParserError', Exception):
+                date_input = "invalid_date"  # Simulating a parser issue
+                formatted = format_date_mm_dd_yyyy(date_input)
+        self.assertIsNone(formatted)
+        self.assertEqual(cm.output, [
+            f'ERROR:helpers.helpers:Failed to parse date: {date_input}'
+        ])        
+
+    def test_unknown_timezone_warning(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.UnknownTimezoneWarning', Warning):
+                date_input = "invalid_time_zone"  # Simulating an unknown timezone
+                formatted = format_date_mm_dd_yyyy(date_input)
+        self.assertIsNone(formatted)
+#        self.assertEqual(cm.output, [
+#            f"ERROR:helpers.helpers:Invalid Time zone: {date_input}"
+#        ])
+
+#    def test_general_exception(self):
+#        with self.assertLogs(level='INFO') as cm:
+#            with patch('helpers.helpers.datetime.datetime.strftime', side_effect=Exception("Unknown error")):
+#                date_input = datetime(2023, 9, 22)
+#                formatted = format_date_mm_dd_yyyy(date_input)
+#        self.assertIsNone(formatted)
+#        self.assertEqual(cm.output, ["ERROR:helpers.helpers:Unknown error: Unknown error"])
+
+
+class TestFormatDateHHMM(TestCase):
+    def test_valid_date(self):
+        valid_date = datetime(2023, 9, 22, 15, 45)  # 3:45 PM
+        formatted = format_date_hh_mm(valid_date)
+        self.assertEqual(formatted, "03:45 PM")
+
+    def test_parser_error(self):
+        with self.assertLogs(level='INFO') as cm:
+            with patch('helpers.helpers.parser.ParserError', Exception):
+                date_input = "invalid_date"  # Simulating a parser issue
+                formatted = format_date_hh_mm(date_input)
+        self.assertIsNone(formatted)
+        self.assertEqual(cm.output, [
+            f'ERROR:helpers.helpers:Failed to parse date: {date_input}'
+        ])  
+
+
+class TestGetCenterRefereeInfo(TestCase):
+
+    def test_successful_case(self):
+        payload = [
+            {
+                'position': 'Referee',
+                'first_name': 'John',
+                'last_name': 'Doe',
+                'email_addresses': ['john.doe@example.com']
+            },
+            {
+                'position': 'Assistant Referee',
+                'first_name': 'Jane',
+                'last_name': 'Smith',
+                'email_addresses': ['jane.smith@example.com']
+            }
+        ]
+        expected_result = {
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'email_addresses': ['john.doe@example.com']
+        }
+
+        result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+
+    def test_no_referee_in_payload(self):
+        payload = [
+            {
+                'position': 'Assistant Referee',
+                'first_name': 'Jane',
+                'last_name': 'Smith',
+                'email_addresses': ['jane.smith@example.com']
+            }
+        ]
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+
+    def test_missing_keys_in_payload(self):
+        payload = [
+            {
+                'position': 'Referee'
+                # Missing 'first_name', 'last_name', 'email_addresses'
+            }
+        ]
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        with self.assertLogs(level='INFO') as cm:
+            result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+        self.assertEqual(cm.output,
+                         ["ERROR:root:Key: 'first_name', missing from Get Referee response"])
+
+    def test_empty_payload(self):
+        payload = []
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        result = get_center_referee_info(payload)
         self.assertEqual(result, expected_result)
