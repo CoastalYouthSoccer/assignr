@@ -9,7 +9,8 @@ from helpers.helpers import (get_environment_vars, get_spreadsheet_vars,
                              format_str_mm_dd_yyyy, load_sheet,
                              rows_to_dict, get_match_count, get_misconducts,
                              get_referees, get_coaches_name, set_boolean_value,
-                             format_date_mm_dd_yyyy, format_date_hh_mm)
+                             format_date_mm_dd_yyyy, format_date_hh_mm,
+                             get_center_referee_info)
 
 CONST_GRADE_78 = "Grade 7/8"
 CLIENT_SECRET = "client_secret"
@@ -683,3 +684,78 @@ class TestFormatDateHHMM(TestCase):
         self.assertEqual(cm.output, [
             f'ERROR:helpers.helpers:Failed to parse date: {date_input}'
         ])  
+
+
+class TestGetCenterRefereeInfo(TestCase):
+
+    def test_successful_case(self):
+        payload = [
+            {
+                'position': 'Referee',
+                'first_name': 'John',
+                'last_name': 'Doe',
+                'email_addresses': ['john.doe@example.com']
+            },
+            {
+                'position': 'Assistant Referee',
+                'first_name': 'Jane',
+                'last_name': 'Smith',
+                'email_addresses': ['jane.smith@example.com']
+            }
+        ]
+        expected_result = {
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'email_addresses': ['john.doe@example.com']
+        }
+
+        result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+
+    def test_no_referee_in_payload(self):
+        payload = [
+            {
+                'position': 'Assistant Referee',
+                'first_name': 'Jane',
+                'last_name': 'Smith',
+                'email_addresses': ['jane.smith@example.com']
+            }
+        ]
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+
+    def test_missing_keys_in_payload(self):
+        payload = [
+            {
+                'position': 'Referee'
+                # Missing 'first_name', 'last_name', 'email_addresses'
+            }
+        ]
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        with self.assertLogs(level='INFO') as cm:
+            result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
+        self.assertEqual(cm.output,
+                         ["ERROR:root:Key: 'first_name', missing from Get Referee response"])
+
+    def test_empty_payload(self):
+        payload = []
+        expected_result = {
+            'first_name': None,
+            'last_name': None,
+            'email_addresses': []
+        }
+
+        result = get_center_referee_info(payload)
+        self.assertEqual(result, expected_result)
