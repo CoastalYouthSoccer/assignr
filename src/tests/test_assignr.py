@@ -1017,3 +1017,60 @@ class TestGetLeagueGames(TestCase):
         # Assertions
         self.assertEqual(result, [])  # No results due to KeyError
 #        mock_logger.error.assert_called_once_with("Key: 'games', missing from Game response")
+
+
+class TestLoadRefereesAssignors(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 1234  # simulate no token
+        self.instance.site_id = 123  # simulate no site_id
+
+    @patch.object(Assignr, 'get_requests')
+    def test_successful_response(self,mock_get_requests):
+  
+        # Mock setup
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {
+                'users': [
+                    {'id': '1', 'official': True, 'assignor': False, 'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john.doe@example.com']},
+                    {'id': '2', 'official': False, 'assignor': True, 'first_name': 'Jane', 'last_name': 'Smith', 'email_addresses': ['jane.smith@example.com']}
+                ]
+            }
+        })
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(len(self.instance.referees), 1)
+        self.assertEqual(len(self.instance.assignors), 1)
+        self.assertEqual(self.instance.referees['1']['first_name'], 'John')
+        self.assertEqual(self.instance.assignors['2']['last_name'], 'Smith')
+
+    @patch.object(Assignr, 'get_requests')
+    def test_failed_api_call(self, mock_get_requests):
+        
+        # Simulate API call failure
+        mock_get_requests.return_value = (500, None)
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(self.instance.referees, {})
+        self.assertEqual(self.instance.assignors, {})
+
+    @patch.object(Assignr, 'get_requests')
+    def test_key_error_in_response(self, mock_get_requests):
+
+        # Simulate missing keys in the response
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},  # Missing '_embedded' and 'users'
+        })
+
+        self.instance.load_referees_assignors()
+
+        # Assertions
+        self.assertEqual(self.instance.referees, {})
+        self.assertEqual(self.instance.assignors, {})
