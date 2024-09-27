@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
 from assignr.assignr import Assignr
+from helpers.helpers import process_game_report
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
@@ -608,16 +609,61 @@ class TestGameInformation(TestCase):
 
         self.assertEqual(result, expected_result)
 
-    @patch.object(Assignr, 'get_referees_by_assignments')
-    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments):
-        # Prepare a payload with missing keys to simulate a KeyError
+    def test_get_game_information_keyerror(self):
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        temp.site_id = 100
+        temp.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+            },
+            12761: {
+                'first_name': 'Homer',
+                'email_addresses': ['homer@springfield.simpson']                
+            }            
+        }
         payload = {
             "id": 101,
-            # Missing several keys to trigger the KeyError exception
+            "localized_date": "2024-09-01",
+            "localized_time": "15:00",
+            "start_time": "14:45",
+            "home_team": "Team A",
+            "away_team": "Team B",
+            "age_group": "U12",
+            "league": "Youth League",
+            "gender": "M",
+            "game_type": "Friendly",
+            "cancelled": False,
+            "_embedded": {
+                "assignor": {"id": 123},
+                "assignments": [
+                    {
+                        'position': 'Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12656}}
+                    }, {
+                        'position': 'Assistant Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12761}}
+                    }
+                ],
+                "venue": "Stadium A"
+            },
+            "subvenue": "Field 2"
+        }
+        expected_result = {
+            'id': 101, 'game_date': None, 'game_time': None, 'start_time': None,
+            'home_team': None, 'away_team': None, 'age_group': None, 'league': None,
+            'venue': None, 'sub_venue': None, 'gender': None, 'game_type': None,
+            'cancelled': None, 'referees': None, 'assignor': None
         }
 
-        # Call the method under test
-        result = self.instance.get_game_information(payload)
+        with self.assertLogs(level='INFO') as cm:
+            result = temp.get_game_information(payload)
+
+        self.assertEqual(cm.output, ["ERROR:root:Key: 123, missing from Game Information Function"])
+        self.assertEqual(result, expected_result)
 
         # Assert that the result contains None values for missing fields
         expected_result = {
@@ -1074,3 +1120,367 @@ class TestLoadRefereesAssignors(TestCase):
         # Assertions
         self.assertEqual(self.instance.referees, {})
         self.assertEqual(self.instance.assignors, {})
+
+
+class TestGetReports(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 123
+        self.instance.site_id = 333
+
+    @patch.object(Assignr, 'get_requests')
+    @patch('helpers.helpers.process_game_report')
+    @patch('helpers.helpers.get_coaches_name')
+    def test_successful_report_retrieval(self, mock_get_coaches_name, mock_process_game_report,
+                                         mock_get_requests):
+        # Mock the process_game_report to return a simple dictionary
+        mock_process_game_report.side_effect = lambda x: x
+        
+        mock_get_coaches_name.return_value = {}
+
+        # Mock the API response for get_requests
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {
+                'form_submissions': [
+            {
+                "id": 948093,
+                "author_name": "Mickey Mouse",
+                "has_misconduct": "false",
+                "has_no_show": "false",
+                "has_narrative": "false",
+                "has_ejections": "false",
+                "home_team_score": 3,
+                "away_team_score": 8,
+                "attachments": [],
+                "created": "2024-09-26T10:59:55.481-04:00",
+                "updated": "2024-09-26T10:59:57.380-04:00",
+                "_links": {
+                    "self": {
+                        "resource-type": "form-submission",
+                        "href": "https://api.assignr.com/api/v2/form/submissions/948093.json"
+                    }
+                },
+                "_embedded": {
+                    "values": [
+                        {
+                            "key": ".venue",
+                            "template_key": "venue",
+                            "label": "Venue",
+                            "value": "Summit Field - Front Field"
+                        },
+                        {
+                            "key": ".gender",
+                            "template_key": "gender",
+                            "label": "Gender",
+                            "value": "Boys"
+                        },
+                        {
+                            "key": ".league",
+                            "template_key": "league",
+                            "label": "Association/League",
+                            "value": "Springfield"
+                        },
+                        {
+                            "key": ".summary",
+                            "template_key": "summary",
+                            "label": "Summary",
+                            "value": "Wed Sep 25 5:30 PM @ Summit Field (Front Field): Grade 5/6 Boys"
+                        },
+                        {
+                            "key": ".ageGroup",
+                            "template_key": "ageGroup",
+                            "label": "Age Group / Division",
+                            "value": "Grade 5/6"
+                        },
+                        {
+                            "key": ".awayTeam",
+                            "template_key": "awayTeam",
+                            "label": "Away Team",
+                            "value": "Springfield-5"
+                        },
+                        {
+                            "key": ".homeTeam",
+                            "template_key": "homeTeam",
+                            "label": "Home Team",
+                            "value": "Springfield-2"
+                        },
+                        {
+                            "key": ".ejections",
+                            "template_key": "ejections",
+                            "label": "Ejections",
+                            "value": "false"
+                        },
+                        {
+                            "key": ".officials.0.name",
+                            "template_key": "name",
+                            "label": "Officials > 1 > Name",
+                            "value": "Bart Simpson"
+                        },
+                        {
+                            "key": ".officials.0.grade",
+                            "template_key": "grade",
+                            "label": "Officials > 1 > Grade",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".officials.0.position",
+                            "template_key": "position",
+                            "label": "Officials > 1 > Position",
+                            "value": "Referee"
+                        },
+                        {
+                            "key": ".officials.1.name",
+                            "template_key": "name",
+                            "label": "Officials > 2 > Name",
+                            "value": "Marge Simpson"
+                        },
+                        {
+                            "key": ".officials.1.grade",
+                            "template_key": "grade",
+                            "label": "Officials > 2 > Grade",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".officials.1.position",
+                            "template_key": "position",
+                            "label": "Officials > 2 > Position",
+                            "value": "Asst. Referee"
+                        },
+                        {
+                            "key": ".officials.2.name",
+                            "template_key": "name",
+                            "label": "Officials > 3 > Name",
+                            "value": "Homer Simpson"
+                        },
+                        {
+                            "key": ".officials.2.grade",
+                            "template_key": "grade",
+                            "label": "Officials > 3 > Grade",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".officials.2.position",
+                            "template_key": "position",
+                            "label": "Officials > 3 > Position",
+                            "value": "Asst. Referee"
+                        },
+                        {
+                            "key": ".startTime",
+                            "template_key": "startTime",
+                            "label": "Date / Time",
+                            "value": "2024-09-25T17:30:00-04:00"
+                        },
+                        {
+                            "key": ".gameNumber",
+                            "template_key": "gameNumber",
+                            "label": "Game Number",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".adminReview",
+                            "template_key": "adminReview",
+                            "label": "Game Report Requires Administrative Review",
+                            "value": "false"
+                        },
+                        {
+                            "key": ".awayTeamScore",
+                            "template_key": "awayTeamScore",
+                            "label": "Away Score",
+                            "value": "8"
+                        },
+                        {
+                            "key": ".homeTeamScore",
+                            "template_key": "homeTeamScore",
+                            "label": "Home Score",
+                            "value": "3"
+                        },
+                        {
+                            "key": ".adminNarrative",
+                            "template_key": "adminNarrative",
+                            "label": "Description",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".assignmentsCorrect",
+                            "template_key": "assignmentsCorrect",
+                            "label": "Are the assigned officials, as shown above, correct? ",
+                            "value": "yes"
+                        },
+                        {
+                            "key": ".misconductCheckbox",
+                            "template_key": "misconductCheckbox",
+                            "label": "Player(s), Substitute(s) or Team Official(s) were Cautioned or Sent Off",
+                            "value": "false"
+                        },
+                        {
+                            "key": ".teamRostersWereValid",
+                            "template_key": "teamRostersWereValid",
+                            "label": "Were team rosters valid?",
+                            "value": "yes"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.acl",
+                            "label": "Upload Away Team Roster > 1 > acl",
+                            "value": "private"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.key",
+                            "label": "Upload Away Team Roster > 1 > key",
+                            "value": "form_uploads/1409253/2024-09-26/1727362754/a0e25494-47aa-4213-9bdc-bd3588445b02/IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.url",
+                            "label": "Upload Away Team Roster > 1 > url",
+                            "value": "https://assignr-prod.s3.amazonaws.com/form_uploads/1409253/2024-09-26/1727362754/a0e25494-47aa-4213-9bdc-bd3588445b02/IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.hash",
+                            "label": "Upload Away Team Roster > 1 > hash",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.name",
+                            "label": "Upload Away Team Roster > 1 > name",
+                            "value": "IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.size",
+                            "label": "Upload Away Team Roster > 1 > size",
+                            "value": "4375085"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.type",
+                            "label": "Upload Away Team Roster > 1 > type",
+                            "value": "image/jpeg"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.storage",
+                            "label": "Upload Away Team Roster > 1 > storage",
+                            "value": "s3"
+                        },
+                        {
+                            "key": ".uploadAwayTeamRoster.0.originalName",
+                            "label": "Upload Away Team Roster > 1 > originalName",
+                            "value": "IMG_7935.jpeg"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.acl",
+                            "label": "Upload Home Team Roster > 1 > acl",
+                            "value": "private"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.key",
+                            "label": "Upload Home Team Roster > 1 > key",
+                            "value": "form_uploads/1409253/2024-09-26/1727362772/7d3053a2-9396-41f2-8293-49f1e5babc18/IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.url",
+                            "label": "Upload Home Team Roster > 1 > url",
+                            "value": "https://assignr-prod.s3.amazonaws.com/form_uploads/1409253/2024-09-26/1727362772/7d3053a2-9396-41f2-8293-49f1e5babc18/IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.hash",
+                            "label": "Upload Home Team Roster > 1 > hash",
+                            "value": "null"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.name",
+                            "label": "Upload Home Team Roster > 1 > name",
+                            "value": "IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.size",
+                            "label": "Upload Home Team Roster > 1 > size",
+                            "value": "4201767"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.type",
+                            "label": "Upload Home Team Roster > 1 > type",
+                            "value": "image/jpeg"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.storage",
+                            "label": "Upload Home Team Roster > 1 > storage",
+                            "value": "s3"
+                        },
+                        {
+                            "key": ".uploadHomeTeamRoster.0.originalName",
+                            "label": "Upload Home Team Roster > 1 > originalName",
+                            "value": "IMG_7934.jpeg"
+                        },
+                        {
+                            "key": ".didTheCoachEsWearTheirLanyards",
+                            "template_key": "didTheCoachEsWearTheirLanyards",
+                            "label": "Did the coach(es) wear their lanyards?",
+                            "value": "yes"
+                        }
+                    ]
+                }
+            }]
+            }
+        })
+        
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {'Some League': ['assignor1@example.com']}
+        coaches = {}
+
+        # Call the function
+        result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that the reports structure is correct
+        self.assertIn('misconducts', result)
+        self.assertIn('admin_reports', result)
+        self.assertIn('assignor_reports', result)
+
+    @patch.object(Assignr, 'get_requests')
+    def test_api_failure(self,mock_get_requests):
+        # Mock the API response to simulate failure
+        mock_get_requests.return_value = (500, {})
+
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {}
+        coaches = {}
+
+        # Call the function
+        with self.assertLogs(level='INFO') as cm:
+            result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that reports are empty
+        self.assertEqual(result['misconducts'], [])
+        self.assertEqual(result['admin_reports'], [])
+        self.assertEqual(result['assignor_reports'], [])
+        self.assertEqual(cm.output, ["ERROR:root:Failed to get reports: 500"])
+
+    @patch.object(Assignr, 'get_requests')
+    def test_key_error_in_response(self, mock_get_requests):
+        # Mock the API response with missing keys
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {
+                'form_submissions': [
+                    {
+                        '_embedded': {}  # Missing expected keys
+                    }
+                ]
+            }
+        })
+
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {}
+        coaches = {}
+
+        # Call the function
+        with self.assertLogs(level='INFO') as cm:
+            result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that reports are still initialized as empty
+        self.assertEqual(result['misconducts'], [])
+        self.assertEqual(result['admin_reports'], [])
+        self.assertEqual(result['assignor_reports'], [])
+        self.assertEqual(cm.output, ["ERROR:root:Key: 'values', missing from Game Report response"])
