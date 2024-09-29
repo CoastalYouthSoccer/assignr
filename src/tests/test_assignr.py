@@ -1,8 +1,10 @@
+import sys
+from os.path import join, abspath, dirname
 from datetime import datetime
+import json
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
 from assignr.assignr import Assignr
-from helpers.helpers import process_game_report
 
 ACCESS_TOKEN = "ACCESS_TOKEN"
 BASE_URL = "https://base.com"
@@ -10,6 +12,7 @@ AUTH_URL = "https://auth.com"
 ASSIGNR_REQUESTS ="assignr.assignr.requests"
 CONST_DATE_2022_01_01 = datetime(2022,1,1,0,0,0,0)
 
+response_file_dir = join(dirname(abspath(__file__)), 'mock_responses')
 
 mock_auth_response = MagicMock()
 mock_auth_response.status_code = 200
@@ -483,45 +486,6 @@ class TestGetGameIds(TestCase):
         mock_get_game_information.assert_any_call({'id': 1, 'game_type': 'Coastal'})
         mock_get_game_information.assert_any_call({'id': 3, 'game_type': 'Coastal'})
 
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_site_id')
-#    @patch.object(Assignr, 'authenticate')
-#    def test_get_game_ids_error_handling(self, mock_get_requests, mock_authenticate,
-#                          mock_get_site_id,):
-#        self.instance.token = None
-#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
-#
-#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
-#        mock_get_requests.return_value = (500, {})
-#
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
-#
-#        # Expected result is an empty dictionary due to API failure
-#        self.assertEqual(result, {})
-
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_site_id')
-#    @patch.object(Assignr, 'authenticate')
-#    def test_get_game_ids_keyerror_handling(self, mock_get_requests, mock_authenticate,
-#                          mock_get_site_id,):
-#        self.instance.token = None
-#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
-#
-#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
-#        mock_get_requests.return_value = (200, {
-#            'page': {'pages': 1},
-#            '_embedded': {'games': [{'id': 1}]}
-#        })
-#
-#        # Call the method and expect it to handle KeyError gracefully
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
-
-#        self.assertEqual(result, {})
-
 
 class TestGameInformation(TestCase):
     def setUp(self):
@@ -873,29 +837,6 @@ class TestGetGameIds(TestCase):
         # Check that get_requests was called twice (pagination handling)
         self.assertEqual(mock_get_requests.call_count, 2)
 
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_game_information')
-#    def test_get_game_ids_api_failure(self, mock_get_game_information, mock_get_requests):
-#        # Simulate an unsuccessful API call (status code != 200)
-#        mock_get_requests.return_value = (500, None)
-#
-#        # Simulating the input 'games' dictionary
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        game_type = "Coastal"
-#
-#        # Call the method under test
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
-#
-#        # Expected result should be an empty dictionary since the API failed
-#        expected_result = {}
-#
-#        # Assert that the result is an empty dictionary
-#        self.assertEqual(result, expected_result)
-#
-#        # Verify that the request was made once and failed
-#        mock_get_requests.assert_called_once()
-
 
 class TestGetAssignors(TestCase):
 
@@ -959,42 +900,6 @@ class TestGetAssignors(TestCase):
             params={'page': 2}
         )
 
-#    @patch.object(Assignr, 'get_requests')
-#    def test_get_assignors_api_failure(self, mock_get_requests):
-#        # Simulate an unsuccessful API call (status code != 200)
-#        mock_get_requests.return_value = (500, None)
-#
-#        # Call the method under test
-#        result = self.instance.get_assignors()
-#
-#        # Expected result should be an empty list since the API failed
-#        expected_result = []
-#
-#        # Assert that the result is an empty list
-#        self.assertEqual(result, expected_result)
-#
-#        # Verify that the request was made once and failed
-#        mock_get_requests.assert_called_once()
-#
-#    @patch.object(Assignr, 'get_requests')
-#    def test_get_assignors_key_error(self, mock_get_requests):
-#        # Simulate an API response with a missing key (KeyError scenario)
-#        mock_get_requests.return_value = (200, {
-#            'page': {'pages': 1},
-#            '_embedded': {'users': [
-#                {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True}  # 'active' key is missing
-#            ]}
-#        })
-#
-#        # Call the method under test
-#        result = self.instance.get_assignors()
-#
-#        # Expected result should be an empty list since the key 'active' is missing
-#        expected_result = []
-#
-#        # Assert that the result is an empty list
-#        self.assertEqual(result, expected_result)
-#
 
 class TestGetLeagueGames(TestCase):
     def setUp(self):
@@ -1141,287 +1046,10 @@ class TestGetReports(TestCase):
         mock_get_coaches_name.return_value = {}
 
         # Mock the API response for get_requests
-        mock_get_requests.return_value = (200, {
-            'page': {'pages': 1},
-            '_embedded': {
-                'form_submissions': [
-            {
-                "id": 948093,
-                "author_name": "Mickey Mouse",
-                "has_misconduct": "false",
-                "has_no_show": "false",
-                "has_narrative": "false",
-                "has_ejections": "false",
-                "home_team_score": 3,
-                "away_team_score": 8,
-                "attachments": [],
-                "created": "2024-09-26T10:59:55.481-04:00",
-                "updated": "2024-09-26T10:59:57.380-04:00",
-                "_links": {
-                    "self": {
-                        "resource-type": "form-submission",
-                        "href": "https://api.assignr.com/api/v2/form/submissions/948093.json"
-                    }
-                },
-                "_embedded": {
-                    "values": [
-                        {
-                            "key": ".venue",
-                            "template_key": "venue",
-                            "label": "Venue",
-                            "value": "Summit Field - Front Field"
-                        },
-                        {
-                            "key": ".gender",
-                            "template_key": "gender",
-                            "label": "Gender",
-                            "value": "Boys"
-                        },
-                        {
-                            "key": ".league",
-                            "template_key": "league",
-                            "label": "Association/League",
-                            "value": "Springfield"
-                        },
-                        {
-                            "key": ".summary",
-                            "template_key": "summary",
-                            "label": "Summary",
-                            "value": "Wed Sep 25 5:30 PM @ Summit Field (Front Field): Grade 5/6 Boys"
-                        },
-                        {
-                            "key": ".ageGroup",
-                            "template_key": "ageGroup",
-                            "label": "Age Group / Division",
-                            "value": "Grade 5/6"
-                        },
-                        {
-                            "key": ".awayTeam",
-                            "template_key": "awayTeam",
-                            "label": "Away Team",
-                            "value": "Springfield-5"
-                        },
-                        {
-                            "key": ".homeTeam",
-                            "template_key": "homeTeam",
-                            "label": "Home Team",
-                            "value": "Springfield-2"
-                        },
-                        {
-                            "key": ".ejections",
-                            "template_key": "ejections",
-                            "label": "Ejections",
-                            "value": "false"
-                        },
-                        {
-                            "key": ".officials.0.name",
-                            "template_key": "name",
-                            "label": "Officials > 1 > Name",
-                            "value": "Bart Simpson"
-                        },
-                        {
-                            "key": ".officials.0.grade",
-                            "template_key": "grade",
-                            "label": "Officials > 1 > Grade",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".officials.0.position",
-                            "template_key": "position",
-                            "label": "Officials > 1 > Position",
-                            "value": "Referee"
-                        },
-                        {
-                            "key": ".officials.1.name",
-                            "template_key": "name",
-                            "label": "Officials > 2 > Name",
-                            "value": "Marge Simpson"
-                        },
-                        {
-                            "key": ".officials.1.grade",
-                            "template_key": "grade",
-                            "label": "Officials > 2 > Grade",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".officials.1.position",
-                            "template_key": "position",
-                            "label": "Officials > 2 > Position",
-                            "value": "Asst. Referee"
-                        },
-                        {
-                            "key": ".officials.2.name",
-                            "template_key": "name",
-                            "label": "Officials > 3 > Name",
-                            "value": "Homer Simpson"
-                        },
-                        {
-                            "key": ".officials.2.grade",
-                            "template_key": "grade",
-                            "label": "Officials > 3 > Grade",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".officials.2.position",
-                            "template_key": "position",
-                            "label": "Officials > 3 > Position",
-                            "value": "Asst. Referee"
-                        },
-                        {
-                            "key": ".startTime",
-                            "template_key": "startTime",
-                            "label": "Date / Time",
-                            "value": "2024-09-25T17:30:00-04:00"
-                        },
-                        {
-                            "key": ".gameNumber",
-                            "template_key": "gameNumber",
-                            "label": "Game Number",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".adminReview",
-                            "template_key": "adminReview",
-                            "label": "Game Report Requires Administrative Review",
-                            "value": "false"
-                        },
-                        {
-                            "key": ".awayTeamScore",
-                            "template_key": "awayTeamScore",
-                            "label": "Away Score",
-                            "value": "8"
-                        },
-                        {
-                            "key": ".homeTeamScore",
-                            "template_key": "homeTeamScore",
-                            "label": "Home Score",
-                            "value": "3"
-                        },
-                        {
-                            "key": ".adminNarrative",
-                            "template_key": "adminNarrative",
-                            "label": "Description",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".assignmentsCorrect",
-                            "template_key": "assignmentsCorrect",
-                            "label": "Are the assigned officials, as shown above, correct? ",
-                            "value": "yes"
-                        },
-                        {
-                            "key": ".misconductCheckbox",
-                            "template_key": "misconductCheckbox",
-                            "label": "Player(s), Substitute(s) or Team Official(s) were Cautioned or Sent Off",
-                            "value": "false"
-                        },
-                        {
-                            "key": ".teamRostersWereValid",
-                            "template_key": "teamRostersWereValid",
-                            "label": "Were team rosters valid?",
-                            "value": "yes"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.acl",
-                            "label": "Upload Away Team Roster > 1 > acl",
-                            "value": "private"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.key",
-                            "label": "Upload Away Team Roster > 1 > key",
-                            "value": "form_uploads/1409253/2024-09-26/1727362754/a0e25494-47aa-4213-9bdc-bd3588445b02/IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.url",
-                            "label": "Upload Away Team Roster > 1 > url",
-                            "value": "https://assignr-prod.s3.amazonaws.com/form_uploads/1409253/2024-09-26/1727362754/a0e25494-47aa-4213-9bdc-bd3588445b02/IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.hash",
-                            "label": "Upload Away Team Roster > 1 > hash",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.name",
-                            "label": "Upload Away Team Roster > 1 > name",
-                            "value": "IMG_7935-45d41e78-243f-4fd9-9ed8-af346798ec39.jpeg"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.size",
-                            "label": "Upload Away Team Roster > 1 > size",
-                            "value": "4375085"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.type",
-                            "label": "Upload Away Team Roster > 1 > type",
-                            "value": "image/jpeg"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.storage",
-                            "label": "Upload Away Team Roster > 1 > storage",
-                            "value": "s3"
-                        },
-                        {
-                            "key": ".uploadAwayTeamRoster.0.originalName",
-                            "label": "Upload Away Team Roster > 1 > originalName",
-                            "value": "IMG_7935.jpeg"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.acl",
-                            "label": "Upload Home Team Roster > 1 > acl",
-                            "value": "private"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.key",
-                            "label": "Upload Home Team Roster > 1 > key",
-                            "value": "form_uploads/1409253/2024-09-26/1727362772/7d3053a2-9396-41f2-8293-49f1e5babc18/IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.url",
-                            "label": "Upload Home Team Roster > 1 > url",
-                            "value": "https://assignr-prod.s3.amazonaws.com/form_uploads/1409253/2024-09-26/1727362772/7d3053a2-9396-41f2-8293-49f1e5babc18/IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.hash",
-                            "label": "Upload Home Team Roster > 1 > hash",
-                            "value": "null"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.name",
-                            "label": "Upload Home Team Roster > 1 > name",
-                            "value": "IMG_7934-f1166a65-fe77-406c-8106-d141744fe604.jpeg"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.size",
-                            "label": "Upload Home Team Roster > 1 > size",
-                            "value": "4201767"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.type",
-                            "label": "Upload Home Team Roster > 1 > type",
-                            "value": "image/jpeg"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.storage",
-                            "label": "Upload Home Team Roster > 1 > storage",
-                            "value": "s3"
-                        },
-                        {
-                            "key": ".uploadHomeTeamRoster.0.originalName",
-                            "label": "Upload Home Team Roster > 1 > originalName",
-                            "value": "IMG_7934.jpeg"
-                        },
-                        {
-                            "key": ".didTheCoachEsWearTheirLanyards",
-                            "template_key": "didTheCoachEsWearTheirLanyards",
-                            "label": "Did the coach(es) wear their lanyards?",
-                            "value": "yes"
-                        }
-                    ]
-                }
-            }]
-            }
-        })
+        with open(join(response_file_dir, f"{sys._getframe(  ).f_code.co_name}.json")) as file:
+            get_request_results = json.load(file)
+
+        mock_get_requests.return_value = (200,get_request_results)
         
         start_dt = '2023-09-23'
         end_dt = '2023-09-24'
