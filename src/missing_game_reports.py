@@ -97,9 +97,8 @@ def send_email(email_vars, subject, message, send_to):
 
 def send_referee_reminder(game, email_vars, subject):
     center_referee = get_center_referee_info(game['referees'])
-#    assignor_addresses = game['assignor']['email_addresses']
-#    email_addresses = ",".join(center_referee['email_addresses'] + assignor_addresses)
-    email_addresses = ",".join(['hanoversoccerref@gmail.com'])
+    assignor_addresses = game['assignor']['email_addresses']
+    email_addresses = ",".join(center_referee['email_addresses'] + assignor_addresses)
     message = create_message(game, 'missing_referee_report.html.jinja')
 
     response = send_email(email_vars, subject, message,
