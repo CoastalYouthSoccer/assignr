@@ -1,4 +1,7 @@
+import sys
+from os.path import join, abspath, dirname
 from datetime import datetime
+import json
 from unittest import TestCase
 from unittest.mock import (patch, MagicMock)
 from assignr.assignr import Assignr
@@ -9,6 +12,7 @@ AUTH_URL = "https://auth.com"
 ASSIGNR_REQUESTS ="assignr.assignr.requests"
 CONST_DATE_2022_01_01 = datetime(2022,1,1,0,0,0,0)
 
+response_file_dir = join(dirname(abspath(__file__)), 'mock_responses')
 
 mock_auth_response = MagicMock()
 mock_auth_response.status_code = 200
@@ -482,45 +486,6 @@ class TestGetGameIds(TestCase):
         mock_get_game_information.assert_any_call({'id': 1, 'game_type': 'Coastal'})
         mock_get_game_information.assert_any_call({'id': 3, 'game_type': 'Coastal'})
 
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_site_id')
-#    @patch.object(Assignr, 'authenticate')
-#    def test_get_game_ids_error_handling(self, mock_get_requests, mock_authenticate,
-#                          mock_get_site_id,):
-#        self.instance.token = None
-#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
-#
-#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
-#        mock_get_requests.return_value = (500, {})
-#
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
-#
-#        # Expected result is an empty dictionary due to API failure
-#        self.assertEqual(result, {})
-
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_site_id')
-#    @patch.object(Assignr, 'authenticate')
-#    def test_get_game_ids_keyerror_handling(self, mock_get_requests, mock_authenticate,
-#                          mock_get_site_id,):
-#        self.instance.token = None
-#        mock_authenticate.side_effect = lambda: setattr(self.instance, 'token', 'dummy_token')
-#
-#        mock_get_site_id.side_effect = lambda: setattr(self.instance, 'site_id', 123)
-#        mock_get_requests.return_value = (200, {
-#            'page': {'pages': 1},
-#            '_embedded': {'games': [{'id': 1}]}
-#        })
-#
-#        # Call the method and expect it to handle KeyError gracefully
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type="Coastal")
-
-#        self.assertEqual(result, {})
-
 
 class TestGameInformation(TestCase):
     def setUp(self):
@@ -608,16 +573,61 @@ class TestGameInformation(TestCase):
 
         self.assertEqual(result, expected_result)
 
-    @patch.object(Assignr, 'get_referees_by_assignments')
-    def test_get_game_information_keyerror(self, mock_get_referees_by_assignments):
-        # Prepare a payload with missing keys to simulate a KeyError
+    def test_get_game_information_keyerror(self):
+        temp = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        temp.site_id = 100
+        temp.referees = {
+            12656: {
+                'first_name': 'Mickey',
+                'last_name': 'Mouse',
+            },
+            12761: {
+                'first_name': 'Homer',
+                'email_addresses': ['homer@springfield.simpson']                
+            }            
+        }
         payload = {
             "id": 101,
-            # Missing several keys to trigger the KeyError exception
+            "localized_date": "2024-09-01",
+            "localized_time": "15:00",
+            "start_time": "14:45",
+            "home_team": "Team A",
+            "away_team": "Team B",
+            "age_group": "U12",
+            "league": "Youth League",
+            "gender": "M",
+            "game_type": "Friendly",
+            "cancelled": False,
+            "_embedded": {
+                "assignor": {"id": 123},
+                "assignments": [
+                    {
+                        'position': 'Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12656}}
+                    }, {
+                        'position': 'Assistant Referee',
+                        'accepted': True,
+                        '_embedded': {'official': {'id': 12761}}
+                    }
+                ],
+                "venue": "Stadium A"
+            },
+            "subvenue": "Field 2"
+        }
+        expected_result = {
+            'id': 101, 'game_date': None, 'game_time': None, 'start_time': None,
+            'home_team': None, 'away_team': None, 'age_group': None, 'league': None,
+            'venue': None, 'sub_venue': None, 'gender': None, 'game_type': None,
+            'cancelled': None, 'referees': None, 'assignor': None
         }
 
-        # Call the method under test
-        result = self.instance.get_game_information(payload)
+        with self.assertLogs(level='INFO') as cm:
+            result = temp.get_game_information(payload)
+
+        self.assertEqual(cm.output, ["ERROR:root:Key: 123, missing from Game Information Function"])
+        self.assertEqual(result, expected_result)
 
         # Assert that the result contains None values for missing fields
         expected_result = {
@@ -827,29 +837,6 @@ class TestGetGameIds(TestCase):
         # Check that get_requests was called twice (pagination handling)
         self.assertEqual(mock_get_requests.call_count, 2)
 
-#    @patch.object(Assignr, 'get_requests')
-#    @patch.object(Assignr, 'get_game_information')
-#    def test_get_game_ids_api_failure(self, mock_get_game_information, mock_get_requests):
-#        # Simulate an unsuccessful API call (status code != 200)
-#        mock_get_requests.return_value = (500, None)
-#
-#        # Simulating the input 'games' dictionary
-#        start_dt = "2024-09-01"
-#        end_dt = "2024-09-15"
-#        game_type = "Coastal"
-#
-#        # Call the method under test
-#        result = self.instance.get_game_ids(start_dt, end_dt, game_type)
-#
-#        # Expected result should be an empty dictionary since the API failed
-#        expected_result = {}
-#
-#        # Assert that the result is an empty dictionary
-#        self.assertEqual(result, expected_result)
-#
-#        # Verify that the request was made once and failed
-#        mock_get_requests.assert_called_once()
-
 
 class TestGetAssignors(TestCase):
 
@@ -913,42 +900,6 @@ class TestGetAssignors(TestCase):
             params={'page': 2}
         )
 
-#    @patch.object(Assignr, 'get_requests')
-#    def test_get_assignors_api_failure(self, mock_get_requests):
-#        # Simulate an unsuccessful API call (status code != 200)
-#        mock_get_requests.return_value = (500, None)
-#
-#        # Call the method under test
-#        result = self.instance.get_assignors()
-#
-#        # Expected result should be an empty list since the API failed
-#        expected_result = []
-#
-#        # Assert that the result is an empty list
-#        self.assertEqual(result, expected_result)
-#
-#        # Verify that the request was made once and failed
-#        mock_get_requests.assert_called_once()
-#
-#    @patch.object(Assignr, 'get_requests')
-#    def test_get_assignors_key_error(self, mock_get_requests):
-#        # Simulate an API response with a missing key (KeyError scenario)
-#        mock_get_requests.return_value = (200, {
-#            'page': {'pages': 1},
-#            '_embedded': {'users': [
-#                {'first_name': 'John', 'last_name': 'Doe', 'email_addresses': ['john@example.com'], 'assignor': True}  # 'active' key is missing
-#            ]}
-#        })
-#
-#        # Call the method under test
-#        result = self.instance.get_assignors()
-#
-#        # Expected result should be an empty list since the key 'active' is missing
-#        expected_result = []
-#
-#        # Assert that the result is an empty list
-#        self.assertEqual(result, expected_result)
-#
 
 class TestGetLeagueGames(TestCase):
     def setUp(self):
@@ -1074,3 +1025,90 @@ class TestLoadRefereesAssignors(TestCase):
         # Assertions
         self.assertEqual(self.instance.referees, {})
         self.assertEqual(self.instance.assignors, {})
+
+
+class TestGetReports(TestCase):
+    def setUp(self):
+        # Set up an instance of the class that contains get_assignors
+        self.instance = Assignr('123', '234', '345', BASE_URL,
+                       AUTH_URL)
+        self.instance.token = 123
+        self.instance.site_id = 333
+
+    @patch.object(Assignr, 'get_requests')
+    @patch('helpers.helpers.process_game_report')
+    @patch('helpers.helpers.get_coaches_name')
+    def test_successful_report_retrieval(self, mock_get_coaches_name, mock_process_game_report,
+                                         mock_get_requests):
+        # Mock the process_game_report to return a simple dictionary
+        mock_process_game_report.side_effect = lambda x: x
+        
+        mock_get_coaches_name.return_value = {}
+
+        # Mock the API response for get_requests
+        with open(join(response_file_dir, f"{sys._getframe(  ).f_code.co_name}.json")) as file:
+            get_request_results = json.load(file)
+
+        mock_get_requests.return_value = (200,get_request_results)
+        
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {'Some League': ['assignor1@example.com']}
+        coaches = {}
+
+        # Call the function
+        result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that the reports structure is correct
+        self.assertIn('misconducts', result)
+        self.assertIn('admin_reports', result)
+        self.assertIn('assignor_reports', result)
+
+    @patch.object(Assignr, 'get_requests')
+    def test_api_failure(self,mock_get_requests):
+        # Mock the API response to simulate failure
+        mock_get_requests.return_value = (500, {})
+
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {}
+        coaches = {}
+
+        # Call the function
+        with self.assertLogs(level='INFO') as cm:
+            result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that reports are empty
+        self.assertEqual(result['misconducts'], [])
+        self.assertEqual(result['admin_reports'], [])
+        self.assertEqual(result['assignor_reports'], [])
+        self.assertEqual(cm.output, ["ERROR:root:Failed to get reports: 500"])
+
+    @patch.object(Assignr, 'get_requests')
+    def test_key_error_in_response(self, mock_get_requests):
+        # Mock the API response with missing keys
+        mock_get_requests.return_value = (200, {
+            'page': {'pages': 1},
+            '_embedded': {
+                'form_submissions': [
+                    {
+                        '_embedded': {}  # Missing expected keys
+                    }
+                ]
+            }
+        })
+
+        start_dt = '2023-09-23'
+        end_dt = '2023-09-24'
+        assignors = {}
+        coaches = {}
+
+        # Call the function
+        with self.assertLogs(level='INFO') as cm:
+            result = self.instance.get_reports(start_dt, end_dt, assignors, coaches)
+
+        # Check that reports are still initialized as empty
+        self.assertEqual(result['misconducts'], [])
+        self.assertEqual(result['admin_reports'], [])
+        self.assertEqual(result['assignor_reports'], [])
+        self.assertEqual(cm.output, ["ERROR:root:Key: 'values', missing from Game Report response"])
