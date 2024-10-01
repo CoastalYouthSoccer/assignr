@@ -212,7 +212,7 @@ def main():
     process_assignor_reports(email_vars, reports['assignor_reports'],
                              args[START_DATE], args[END_DATE],
                              assignors)
-    logger.info("Completes Game Report")
+    logger.info("Completed Game Report")
 
 if __name__ == "__main__":
     main()
